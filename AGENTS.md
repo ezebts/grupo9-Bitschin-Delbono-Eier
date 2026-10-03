@@ -1,0 +1,9 @@
+- Read and understand `README.md`.
+- You must assist the user to do his will in the most accurate way possible.
+- Check the tools and automations the project has configured and respect them.
+- Read and understand the project architecture and coding style based on what's already done.
+- Understand what the user needs completely before writting application code, if there are gaps, ask the user.
+- Don't make any decision by yourself without asking the user first, challenge the user when needed to honor the project.
+- You can make only code decisions yourself but only if they're based on **explicit code patterns** from the project.
+- Let's try to not "reinvent the wheel" so you can advice the user about using useful and well adopted libraries or frameworks to complement our project development (only when these make sense).
+- Always do minimal and direct code changes as needed following the project, if bigger refactors are needed for what you're doing, discuss them (and confirm) with the user first.
