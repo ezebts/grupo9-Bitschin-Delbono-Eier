@@ -1,0 +1,30 @@
+{% extends "socialaccount/base_entrance.html" %}
+
+{% comment %}
+Shown after the first Google login (SOCIALACCOUNT_AUTO_SIGNUP = False).
+Name and email come prefilled from Google; the user only has to pick a role.
+{% endcomment %}
+
+{% block head_title %}Completá tu registro{% endblock head_title %}
+
+{% block content %}
+    <div class="space-y-2">
+        <h2 class="text-3xl font-bold">Completá tu registro</h2>
+        <p class="text-base-content/70">Ya vinculaste tu cuenta de Google. Contanos cómo vas a usar la app y revisá tus datos.</p>
+    </div>
+
+    <form method="post" action="{% url 'socialaccount_signup' %}" class="space-y-2">
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
+        {% endfor %}
+        {% include "accounts/_role_field.html" with field=form.role %}
+        <div class="grid sm:grid-cols-2 gap-x-3">
+            {% include "accounts/_field.html" with field=form.first_name %}
+            {% include "accounts/_field.html" with field=form.last_name %}
+        </div>
+        {% include "accounts/_field.html" with field=form.email %}
+        {{ redirect_field }}
+        <button type="submit" class="btn btn-primary btn-lg w-full">Crear cuenta</button>
+    </form>
+{% endblock content %}

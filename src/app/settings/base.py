@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django_tailwind_cli',
     'django_tasks_db',
     'widget_tweaks',
+    'accounts',  # Before allauth so our templates override allauth's.
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -70,9 +71,35 @@ DATABASES = {
 
 # Authentication
 
+AUTH_USER_MODEL = 'accounts.User'
+
 AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Django admin login by username
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
+
+LOGIN_REDIRECT_URL = 'home'
+ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
+
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_SIGNUP_FORM_CLASS = 'accounts.forms.SignupForm'
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # Revisit once a real email provider is configured.
+
+# Show the signup form after the first Google login, so the user picks a role.
+SOCIALACCOUNT_AUTO_SIGNUP = False
+# Google verifies emails: link Google logins to existing accounts with the same email.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
+        },
+    },
+}
 
 
 # Authentication - Password validation
