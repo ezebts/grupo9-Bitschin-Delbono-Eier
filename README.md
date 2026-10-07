@@ -31,6 +31,10 @@ SERVER URL [http://localhost:8000](http://localhost:8000).
 | `make migrations` | `makemigrations` adentro de `web` |
 | `make migrate` | `migrate` adentro de `web` |
 | `make tests` | `pytest` adentro de `web` |
+| `make format` | Auto-fix + format con Ruff |
+| `make lint` | Check de lint/format con Ruff (sin escribir) |
+
+`make setup` también instala los hooks de `pre-commit` (corren `make format` y `make lint`).
 
 ## Config
 

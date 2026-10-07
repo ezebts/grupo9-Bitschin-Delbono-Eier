@@ -23,8 +23,10 @@ dependencies = [
 dev = [
     "django-browser-reload>=1.21.0",
     "django-debug-toolbar>=7.1",
+    "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-django>=4.14.0",
+    "ruff>=0.16.10",
 ]
 
 [tool.pytest.ini_options]
@@ -32,3 +34,51 @@ DJANGO_SETTINGS_MODULE = "app.settings.testing"
 pythonpath = ["src"]
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 cache_dir = "/tmp/pytest_cache"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src"]
+extend-exclude = [
+    "**/migrations/**",
+    "staticfiles",
+    ".django_tailwind_cli",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+# Conflicting lint rules when using the formatter:
+# https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+ignore = [
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D203",
+    "D206",
+    "D300",
+    "Q", # Q000–Q004; also conflicts with format quote-style = "single"
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+    "CPY001", # no copyright headers in this project
+    "D", # pydocstyle — enable later if we adopt docstring conventions
+    "ANN", # type annotations — enable later once typing is consistent
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "shared"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/manage.py" = ["INP001", "PLC0415", "TRY003", "EM101"]
+"src/app/settings/**/*.py" = ["F403", "F405"]
+"src/app/settings/testing.py" = ["S105"]
+"**/tests.py" = ["S101"]
+"**/test_*.py" = ["S101"]
+"**/*_tests.py" = ["S101"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"

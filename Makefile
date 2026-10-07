@@ -1,8 +1,9 @@
-.PHONY: setup up down migrations migrate tests
+.PHONY: setup up down migrations migrate tests format lint
 
 setup:
 	@test -f .env || cp .env.example .env
 	uv sync
+	uv run pre-commit install
 	uv run python src/manage.py tailwind setup
 
 up:
@@ -23,3 +24,11 @@ tests:
 		uv run --no-sync pytest; \
 		code=$$?; \
 		[ $$code -eq 0 ] || [ $$code -eq 5 ]
+
+format:
+	uv run ruff check --fix src
+	uv run ruff format src
+
+lint:
+	uv run ruff check src
+	uv run ruff format --check src

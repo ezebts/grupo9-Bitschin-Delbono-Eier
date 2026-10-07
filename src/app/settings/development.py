@@ -24,7 +24,7 @@ TEMPLATES = [
 ]
 
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
+    'SHOW_TOOLBAR_CALLBACK': lambda _request: DEBUG,
 }
 
 INSTALLED_APPS = [*INSTALLED_APPS, 'debug_toolbar', 'django_browser_reload']
