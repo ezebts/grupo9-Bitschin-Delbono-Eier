@@ -1,4 +1,4 @@
-.PHONY: setup up down migrations migrate tests format lint
+.PHONY: setup up down migrations migrate tests local-tests format lint
 
 setup:
 	@test -f .env || cp .env.example .env
@@ -18,6 +18,13 @@ migrations:
 migrate:
 	docker compose -f development.yaml exec web uv run --no-sync python src/manage.py migrate
 
+# Host/CI pytest (uses app.settings.testing → SQLite; no Docker)
+local-tests:
+	uv run pytest; \
+		code=$$?; \
+		[ $$code -eq 0 ] || [ $$code -eq 5 ]
+
+# Docker-based tests against the running web container
 tests:
 	docker compose -f development.yaml exec web \
 		env -u DJANGO_SETTINGS_MODULE \

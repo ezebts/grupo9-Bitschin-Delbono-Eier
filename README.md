@@ -28,9 +28,10 @@ SERVER URL [http://localhost:8000](http://localhost:8000).
 |---|---|
 | `make up` | Build + start de `development.yaml` |
 | `make down` | Baja los containers |
-| `make migrations` | `makemigrations` adentro de `web` |
-| `make migrate` | `migrate` adentro de `web` |
-| `make tests` | `pytest` adentro de `web` |
+| `make migrations` | `makemigrations` adentro de `web` (Docker) |
+| `make migrate` | `migrate` adentro de `web` (Docker) |
+| `make tests` | `pytest` adentro de `web` (Docker) |
+| `make local-tests` | `pytest` local en el host |
 | `make format` | Auto-fix + format con Ruff |
 | `make lint` | Check de lint/format con Ruff (sin escribir) |
 
