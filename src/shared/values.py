@@ -154,6 +154,13 @@ class Money:
 
     rounding: str = ROUND_HALF_EVEN
 
+    max_digits = 12
+
+    @staticmethod
+    def _digit_count(amount):
+        digits = format(amount, 'f').replace('.', '').lstrip('-').lstrip('0')
+        return len(digits or '0')
+
     def __post_init__(self):
 
         currency = self.Currency(self.currency)
@@ -175,19 +182,22 @@ class Money:
         if not amount.is_finite() or amount < 0:
             raise InvalidMoneyError
 
+        if self._digit_count(amount) > self.max_digits:
+            raise InvalidMoneyError
+
         object.__setattr__(self, 'amount', amount)
         object.__setattr__(self, 'currency', currency)
 
     @classmethod
-    def ARS(cls, amount):  # noqa: N802
+    def ARS(cls, amount=0):  # noqa: N802
         return cls(amount=amount, currency=cls.Currency.ARS, decimal_places=2)
 
     @classmethod
-    def USD(cls, amount):  # noqa: N802
+    def USD(cls, amount=0):  # noqa: N802
         return cls(amount=amount, currency=cls.Currency.USD, decimal_places=2)
 
     @classmethod
-    def create(cls, currency, amount):
+    def create(cls, currency, amount=0):
         constructors = {
             cls.Currency.ARS: cls.ARS,
             cls.Currency.USD: cls.USD,

@@ -1,0 +1,25 @@
+{% load widget_tweaks %}
+<div class="group flex flex-wrap items-center gap-x-3 gap-y-2">
+    <span class="min-w-28 flex-1 font-semibold">{{ day }}</span>
+    <label class="inline-flex items-center gap-2 shrink-0 cursor-pointer">
+        {% render_field closed class="checkbox checkbox-primary" %}
+        <span>Cerrado</span>
+    </label>
+    <div class="flex w-full items-center gap-2 group-has-checked:hidden">
+        <div class="flex-1 min-w-0">
+            <label class="sr-only" for="{{ opens.id_for_label }}">{{ opens.label }}</label>
+            {% render_field opens class="input w-full" %}
+            {% for error in opens.errors %}
+                <p class="text-error text-sm">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <span class="text-base-content/60 shrink-0">a</span>
+        <div class="flex-1 min-w-0">
+            <label class="sr-only" for="{{ closes.id_for_label }}">{{ closes.label }}</label>
+            {% render_field closes class="input w-full" %}
+            {% for error in closes.errors %}
+                <p class="text-error text-sm">{{ error }}</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>

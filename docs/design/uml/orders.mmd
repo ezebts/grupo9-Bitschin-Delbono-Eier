@@ -111,9 +111,12 @@ classDiagram
     }
     class Money {
         <<value>>
+        amount: Decimal
         currency: str
-        amount: int
-        precision: int
+        decimal_places: int
+        maxDigits: int
+        rounding: str
+        +create(currency, amount) Money$
         +ARS(amount) Money$
         +USD(amount) Money$
     }

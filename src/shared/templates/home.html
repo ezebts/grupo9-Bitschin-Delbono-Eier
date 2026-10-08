@@ -14,18 +14,6 @@
                         Página provisoria: acá van a ir
                         {% if user.is_pharmacy %}las solicitudes de tu farmacia{% else %}tus pedidos{% endif %}.
                     </p>
-                    <div class="flex gap-3">
-                        {% if user.is_pharmacy %}
-                            <a class="btn btn-primary" href="{% url 'chats:inbox' %}">Ver consultas</a>
-                        {% else %}
-                            <a class="btn btn-primary" href="{% url 'chats:customer_inbox' %}">Mis consultas</a>
-                        {% endif %}
-                        <a href="{% url 'profile' %}" class="btn btn-primary">Perfil</a>
-                        <form method="post" action="{% url 'account_logout' %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn">Cerrar sesión</button>
-                        </form>
-                    </div>
                 </div>
             </div>
         </div>

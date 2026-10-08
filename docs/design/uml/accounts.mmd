@@ -1,10 +1,10 @@
 classDiagram
     User "1" --> "0..1" ClientAccount
     User "1" --> "0..1" PharmacyAccount
-    User *-- AccountRole
+    User *-- Role
     ClientAccount *-- PhoneNumber
     ClientAccount *-- Location
-    ClientAccount *-- HealthInsuranceNumber
+    ClientAccount *-- SearchRadius
     ClientAccount *-- MailPreferences
     Location *-- Coordinates
     PharmacyAccount *-- PharmacyKind
@@ -12,20 +12,23 @@ classDiagram
     PharmacyAccount *-- PhoneNumber
     PharmacyAccount *-- Location
     PharmacyAccount *-- OpeningHours
+    OpeningHours *-- TimeSlot
     PharmacyAccount *-- DeliveryTerms
     PharmacyAccount *-- PreparationTag
+    DeliveryTerms *-- DeliveryRadius
     DeliveryTerms *-- Money
 
     class User {
         email: str
-        googleLink: str
     }
     class ClientAccount {
         firstName: str
         lastName: str
-        searchRadius: int
-        +create(user, firstName, lastName, phone, location, searchRadius, healthInsuranceNumber, mailPreferences) ClientAccount$
-        +updateProfile(firstName, lastName, phone, location, searchRadius, healthInsuranceNumber, mailPreferences)
+        healthInsuranceNumber: str
+        searchRadius: SearchRadius
+        +updatePersonalDetails(firstName, lastName, phone, healthInsuranceNumber)
+        +updateSearchPreferences(location, searchRadius)
+        +updateMailPreferences(mailPreferences)
     }
     class PharmacyAccount {
         tradeName: str
@@ -35,15 +38,17 @@ classDiagram
         requestEmail: str
         website: str
         visible: bool
-        +create(user, kind, tradeName, legalName, cuit, technicalDirector, license, requestEmail, phone, website, location, openingHours, deliveryTerms, preparationTags) PharmacyAccount$
-        +updateProfile(kind, tradeName, legalName, cuit, technicalDirector, license, requestEmail, phone, website, location, openingHours, deliveryTerms, preparationTags)
-        +isOpen(at) bool
+        +updateEstablishment(visible, kind, tradeName, legalName, cuit, technicalDirector, license)
+        +updateContact(requestEmail, phone, website)
+        +updateLocation(location)
+        +updateOpeningHours(openingHours)
+        +updateDeliveryTerms(deliveryTerms)
+        +updatePreparationTags(preparationTags)
     }
-    class AccountRole {
+    class Role {
         <<enum>>
-        CLIENT = "client"
+        CUSTOMER = "customer"
         PHARMACY = "pharmacy"
-        +fromValue(raw) AccountRole$
     }
     class PhoneNumber {
         <<value>>
@@ -53,8 +58,10 @@ classDiagram
     class Location {
         <<value>>
         address: str
+        locality: str
         postalCode: str
-        +create(address, postalCode, coordinates) Location$
+        coordinates: Coordinates
+        +create(address, locality, postalCode, coordinates) Location$
     }
     class Coordinates {
         <<value>>
@@ -62,50 +69,56 @@ classDiagram
         longitude: float
         +create(latitude, longitude) Coordinates$
     }
-    class HealthInsuranceNumber {
-        <<value>>
-        number: str
-        +create(raw) HealthInsuranceNumber$
-    }
     class MailPreferences {
         <<value>>
         onReply: bool
         onStatusChange: bool
         onQuoteExpiry: bool
-        +create(onReply, onStatusChange, onQuoteExpiry) MailPreferences$
     }
     class PharmacyKind {
         <<enum>>
         PHARMACY_WITH_LAB = "pharmacy_with_lab"
         PREPARATION_LAB = "preparation_lab"
-        +fromValue(raw) PharmacyKind$
     }
     class Cuit {
         <<value>>
         number: str
         +create(raw) Cuit$
     }
-    class OpeningHours {
+    class TimeSlot {
         <<value>>
-        day: str
+        name: str
         opens: time
         closes: time
-        +create(slots) OpeningHours$
-        +isOpen(at) bool
+        +create(name, opens, closes) TimeSlot$
+        +closed() bool
+    }
+    class OpeningHours {
+        <<value>>
+        slots: TimeSlot[]
+    }
+    class DeliveryRadius {
+        <<enum>>
+        KM3 = 3
+        KM5 = 5
+        KM10 = 10
     }
     class DeliveryTerms {
         <<value>>
         pickup: bool
         homeDelivery: bool
-        radius: int
-        +pickupOnly() DeliveryTerms$
-        +withHomeDelivery(radius, baseCost) DeliveryTerms$
+        radius: DeliveryRadius
+        baseCost: Money
+        +create(pickup, homeDelivery, radius, baseCost) DeliveryTerms$
     }
     class Money {
         <<value>>
+        amount: Decimal
         currency: str
-        amount: int
-        precision: int
+        decimal_places: int
+        maxDigits: int
+        rounding: str
+        +create(currency, amount) Money$
         +ARS(amount) Money$
         +USD(amount) Money$
     }
@@ -120,21 +133,29 @@ classDiagram
         DERMATOLOGY = "dermatology"
         VETERINARY = "veterinary"
         GLUTEN_FREE = "gluten_free"
-        +fromValue(raw) PreparationTag$
+    }
+    class SearchRadius {
+        <<enum>>
+        KM1 = 1
+        KM3 = 3
+        KM5 = 5
+        KM10 = 10
     }
 
     classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
     class User:::model
     class ClientAccount:::model
     class PharmacyAccount:::model
-    class AccountRole:::model
+    class Role:::model
+    class SearchRadius:::model
+    class DeliveryRadius:::model
     class PhoneNumber:::model
     class Location:::model
     class Coordinates:::model
-    class HealthInsuranceNumber:::model
     class MailPreferences:::model
     class PharmacyKind:::model
     class Cuit:::model
+    class TimeSlot:::model
     class OpeningHours:::model
     class DeliveryTerms:::model
     class Money:::model

@@ -16,8 +16,10 @@
                 <span x-show="show" x-cloak>{% heroicon_outline "eye-slash" size=20 %}</span>
             </button>
         </div>
-    {% else %}
+    {% elif field.field.widget.input_type %}
         {% render_field field class="input w-full" %}
+    {% else %}
+        {% render_field field class="select w-full" %}
     {% endif %}
     {% if field.help_text %}
         <div class="label whitespace-normal">{{ field.help_text|safe }}</div>

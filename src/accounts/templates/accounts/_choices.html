@@ -1,0 +1,14 @@
+<fieldset class="fieldset">
+    <legend class="fieldset-legend">{{ field.label }}</legend>
+    <div class="{% if pills %}flex flex-wrap gap-2{% else %}flex flex-col gap-2{% endif %}">
+        {% for choice in field %}
+            <label class="{% if pills %}inline-flex items-center gap-2 min-h-11 px-4 rounded-full border border-base-300 cursor-pointer has-checked:border-primary has-checked:bg-primary/10 has-checked:font-semibold{% else %}flex items-center gap-3 p-3 rounded-box border border-base-300 cursor-pointer has-checked:border-primary has-checked:bg-primary/5{% endif %}">
+                {{ choice.tag }}
+                <span>{{ choice.choice_label }}</span>
+            </label>
+        {% endfor %}
+    </div>
+    {% for error in field.errors %}
+        <p class="text-error text-sm">{{ error }}</p>
+    {% endfor %}
+</fieldset>
