@@ -7,16 +7,16 @@ on:
     branches: [main]
 
 jobs:
-  check:
+  ready-to-merge:
     runs-on: ubuntu-latest
     env:
       SECRET_KEY: ci-insecure-secret-key
       ALLOWED_HOSTS: localhost,testserver
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
 

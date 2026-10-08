@@ -7,3 +7,6 @@
 - You can make only code decisions yourself but only if they're based on **explicit code patterns** from the project.
 - Let's try to not "reinvent the wheel" so you can advice the user about using useful and well adopted libraries or frameworks to complement our project development (only when these make sense).
 - Always do minimal and direct code changes as needed following the project, if bigger refactors are needed for what you're doing, discuss them (and confirm) with the user first.
+- Avoid unnecessary comments. Only add comments when they are truly needed to explain something. Even then, keep them short, concise, and direct. We prefer expressive code over lots of comments throughout the codebase. For example, if something is standard behavior and already documented by the framework or a library, we usually don't need to add a comment explaining it.
+- Don't create tests for the UI or tests for frameworks/infrastructure/technical stuff we installed in the project. We usually do acceptance testing manually and only add specific automated tests when there is a clear need.
+- Make sure our tests mainly covers our own application code/features, we don't need to test/cover 3rd parties code. We mainly need to test our business use cases implemented by application code, we need to keep the amount of tests as small and direct as possible.
