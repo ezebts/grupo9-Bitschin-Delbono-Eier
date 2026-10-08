@@ -3,6 +3,7 @@ from contextlib import contextmanager
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.functional import Promise
 
 from shared.exceptions import Error
 
@@ -17,8 +18,9 @@ class TypedForm[TCleanedParams](forms.Form):
     @staticmethod
     def _validation_error(error: Error) -> ValidationError:
         message = getattr(type(error), 'message', None)
-        if not isinstance(message, str) or not message:
+        if not isinstance(message, str | Promise) or not message:
             message = error.code
+
         return ValidationError(message, code=error.code, params=error.details)
 
     def add_error(self, field, error):
@@ -31,7 +33,9 @@ class TypedForm[TCleanedParams](forms.Form):
         ):
             if not error:
                 return
+
             error = [self._validation_error(item) for item in error]
+
         super().add_error(field, error)
 
     @contextmanager

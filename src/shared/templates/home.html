@@ -23,6 +23,13 @@
                         {% csrf_token %}
                         <button type="submit" class="btn">Cerrar sesión</button>
                     </form>
+                    <div class="flex gap-3">
+                        <a href="{% url 'profile' %}" class="btn btn-primary">Perfil</a>
+                        <form method="post" action="{% url 'account_logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn">Cerrar sesión</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
