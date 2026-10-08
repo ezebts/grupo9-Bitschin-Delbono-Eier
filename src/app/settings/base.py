@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'django_tailwind_cli',
     'django_tasks_db',
     'widget_tweaks',
-    'accounts',  # Before allauth so its templates override allauth's.
+    'accounts',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -141,7 +141,7 @@ TAILWIND_CLI_DIST_CSS = 'shared/css/tailwind.css'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR.parent / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'shared/static_tailwind']  # Extra static dirs
+STATICFILES_DIRS = [BASE_DIR / 'shared/static_tailwind']
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
