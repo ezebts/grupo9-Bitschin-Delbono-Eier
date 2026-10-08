@@ -4,11 +4,6 @@ from .models import User
 
 
 class SignupForm(forms.Form):
-    """Extra signup fields, used by allauth for both email and Google signups.
-
-    allauth already saves first_name, last_name and email; we only add the role.
-    """
-
     role = forms.ChoiceField(
         label='¿Cómo vas a usar la app?',
         choices=User.Role.choices,

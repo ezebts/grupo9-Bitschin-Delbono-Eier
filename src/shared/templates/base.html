@@ -2,8 +2,6 @@
 
 {% load i18n django_htmx static tailwind_cli %}
 
-{# No django_browser_reload here: dev-only, and its middleware injects the script. #}
-
 {% get_current_language as LANGUAGE_CODE %}
 
 <html lang="{{ LANGUAGE_CODE }}" data-theme="light">

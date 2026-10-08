@@ -2,7 +2,6 @@
 <fieldset class="fieldset">
     <label class="fieldset-legend" for="{{ field.id_for_label }}">{{ field.label }}</label>
     {% if field.field.widget.input_type == "password" %}
-        {# Eye button toggles the input between password and text (Alpine.js). #}
         <div class="flex items-center gap-2 w-full"
              x-data="{ show: false }"
              x-effect="$el.querySelector('input').type = show ? 'text' : 'password'">
