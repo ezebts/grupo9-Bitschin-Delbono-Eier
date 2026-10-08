@@ -1,22 +1,27 @@
+from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
 from chats.models import Conversation, Message
 
+INITIAL_CONVERSATION_COUNT = 1
+INITIAL_MESSAGE_COUNT = 1
+CUSTOMER_REPLY_MESSAGE_COUNT = 3
+PHARMACY_REPLY_MESSAGE_COUNT = 2
+
 
 class InboxViewTests(TestCase):
     def setUp(self):
         user = get_user_model().objects.create_user(
             username='pharmacy-staff',
-            password='test-password',
             email='staff@example.com',
             role='pharmacy',
         )
         self.client.force_login(user)
         self.customer = get_user_model().objects.create_user(
             username='customer',
-            password='test-password',
             email='customer@example.com',
             first_name='Sofía',
             last_name='Martínez',
@@ -48,12 +53,12 @@ class InboxViewTests(TestCase):
 
         response = self.client.get(reverse('chats:inbox'))
 
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_inbox_reads_conversations_from_database(self):
         response = self.client.get(reverse('chats:inbox'))
 
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == HTTPStatus.OK
         self.assertContains(response, 'Bandeja de entrada')
         self.assertContains(response, 'Sofía Martínez')
         self.assertContains(response, '¿Ya está lista mi crema?')
@@ -100,9 +105,9 @@ class InboxViewTests(TestCase):
             f'{reverse("chats:customer_inbox")}?conversation_id={conversation.pk}',
         )
         message = conversation.messages.get()
-        self.assertEqual(message.sender, Message.Sender.CUSTOMER)
-        self.assertEqual(message.body, '¿Tienen vitamina D en gotas?')
-        self.assertTrue(conversation.waiting_for_pharmacy)
+        assert message.sender == Message.Sender.CUSTOMER
+        assert message.body == '¿Tienen vitamina D en gotas?'
+        assert conversation.waiting_for_pharmacy
 
     def test_customer_can_see_only_their_conversations(self):
         other_conversation = Conversation.objects.create(
@@ -120,7 +125,7 @@ class InboxViewTests(TestCase):
             reverse('chats:customer_inbox'),
             {'conversation_id': other_conversation.pk},
         )
-        self.assertEqual(response.status_code, 404)
+        assert response.status_code == HTTPStatus.NOT_FOUND
 
     def test_customer_can_read_pharmacy_reply_and_continue_conversation(self):
         Message.objects.create(
@@ -146,8 +151,8 @@ class InboxViewTests(TestCase):
             f'{reverse("chats:customer_inbox")}?conversation_id={self.conversation.pk}',
         )
         self.conversation.refresh_from_db()
-        self.assertTrue(self.conversation.waiting_for_pharmacy)
-        self.assertEqual(self.conversation.messages.count(), 3)
+        assert self.conversation.waiting_for_pharmacy
+        assert self.conversation.messages.count() == CUSTOMER_REPLY_MESSAGE_COUNT
 
     def test_customer_cannot_reply_to_another_customers_conversation(self):
         other_conversation = Conversation.objects.create(
@@ -162,16 +167,16 @@ class InboxViewTests(TestCase):
             {'message': 'Mensaje no autorizado'},
         )
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(other_conversation.messages.count(), 0)
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert other_conversation.messages.count() == 0
 
     def test_customer_views_require_login(self):
         self.client.logout()
 
         response = self.client.get(reverse('chats:customer_inbox'))
 
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/accounts/login/', response.url)
+        assert response.status_code == HTTPStatus.FOUND
+        assert '/accounts/login/' in response.url
 
     def test_pharmacy_reply_is_persisted_and_clears_pending_status(self):
         response = self.client.post(
@@ -180,11 +185,11 @@ class InboxViewTests(TestCase):
             HTTP_HX_REQUEST='true',
         )
 
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == HTTPStatus.OK
         self.assertContains(response, 'Sí, ya está lista para retirar.')
         self.conversation.refresh_from_db()
-        self.assertFalse(self.conversation.waiting_for_pharmacy)
-        self.assertEqual(self.conversation.messages.count(), 2)
+        assert not self.conversation.waiting_for_pharmacy
+        assert self.conversation.messages.count() == PHARMACY_REPLY_MESSAGE_COUNT
 
         response = self.client.get(reverse('chats:inbox'))
         self.assertContains(response, 'Sí, ya está lista para retirar.')
@@ -196,7 +201,7 @@ class InboxViewTests(TestCase):
             HTTP_HX_REQUEST='true',
         )
 
-        self.assertEqual(self.conversation.messages.count(), 1)
+        assert self.conversation.messages.count() == INITIAL_MESSAGE_COUNT
         self.assertContains(response, 'Este campo es obligatorio.')
 
     def test_invalid_inquiry_does_not_create_conversation(self):
@@ -209,5 +214,5 @@ class InboxViewTests(TestCase):
             },
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(Conversation.objects.count(), 1)
+        assert response.status_code == HTTPStatus.OK
+        assert Conversation.objects.count() == INITIAL_CONVERSATION_COUNT

@@ -13,7 +13,9 @@ urlpatterns = [
         views.customer_reply,
         name='customer_reply',
     ),
-    path('conversations/<int:conversation_id>/', views.conversation, name='conversation'),
+    path(
+        'conversations/<int:conversation_id>/', views.conversation, name='conversation'
+    ),
     path(
         'conversations/<int:conversation_id>/messages/',
         views.send_message,

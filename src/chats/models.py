@@ -19,7 +19,7 @@ class Conversation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-updated_at']
+        ordering = ('-updated_at',)
 
     def __str__(self):
         return f'{self.subject} — {self.customer_name}'
@@ -53,7 +53,7 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['created_at', 'pk']
+        ordering = ('created_at', 'pk')
 
     def __str__(self):
         return f'{self.get_sender_display()}: {self.body[:50]}'

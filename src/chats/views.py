@@ -44,7 +44,7 @@ def _inbox_context(request, selected=None, form=None):
     if filter_value == 'unread':
         conversations = conversations.filter(waiting_for_pharmacy=True)
 
-    context = {
+    return {
         'conversations': conversations,
         'selected': selected,
         'search': search,
@@ -52,10 +52,11 @@ def _inbox_context(request, selected=None, form=None):
         'form': form or MessageForm(),
         'open_count': Conversation.objects.count(),
         'pending_count': Conversation.objects.filter(waiting_for_pharmacy=True).count(),
-        'today_count': Conversation.objects.filter(created_at__date=timezone.localdate()).count(),
+        'today_count': Conversation.objects.filter(
+            created_at__date=timezone.localdate()
+        ).count(),
         'today': timezone.localdate(),
     }
-    return context
 
 
 def _render_inbox(request, *, selected=None, form=None, show_chat=False):
@@ -67,7 +68,9 @@ def _render_inbox(request, *, selected=None, form=None, show_chat=False):
 @require_http_methods(['GET'])
 @_role_required('pharmacy')
 def inbox(request):
-    conversation_id = request.GET.get('conversation_id') or request.GET.get('selected_id')
+    conversation_id = request.GET.get('conversation_id') or request.GET.get(
+        'selected_id'
+    )
     context = _inbox_context(request)
     conversations = context['conversations']
     selected = (
@@ -140,14 +143,16 @@ def new_inquiry(request):
             if not request.user.email:
                 form.add_error(
                     None,
-                    'Agregá un correo electrónico a tu cuenta antes de enviar una consulta.',
+                    'Agregá un correo electrónico a tu cuenta '
+                    'antes de enviar una consulta.',
                 )
                 return render(request, 'chats/new_inquiry.html', {'form': form})
 
             with transaction.atomic():
                 conversation = Conversation.objects.create(
                     customer=request.user,
-                    customer_name=request.user.get_full_name() or request.user.get_username(),
+                    customer_name=request.user.get_full_name()
+                    or request.user.get_username(),
                     customer_email=request.user.email,
                     customer_phone=form.cleaned_data['customer_phone'],
                     subject=form.cleaned_data['subject'],
@@ -169,7 +174,9 @@ def new_inquiry(request):
 @_role_required('customer')
 @require_http_methods(['GET'])
 def customer_inbox(request):
-    conversations = Conversation.objects.filter(customer=request.user).prefetch_related('messages')
+    conversations = Conversation.objects.filter(customer=request.user).prefetch_related(
+        'messages'
+    )
     conversation_id = request.GET.get('conversation_id')
     selected = (
         get_object_or_404(conversations, pk=conversation_id)
@@ -208,9 +215,13 @@ def customer_reply(request, conversation_id):
                 updated_at=timezone.now(),
             )
 
-        return redirect(f'{reverse("chats:customer_inbox")}?conversation_id={selected.pk}')
+        return redirect(
+            f'{reverse("chats:customer_inbox")}?conversation_id={selected.pk}'
+        )
 
-    conversations = Conversation.objects.filter(customer=request.user).prefetch_related('messages')
+    conversations = Conversation.objects.filter(customer=request.user).prefetch_related(
+        'messages'
+    )
     return render(
         request,
         'chats/customer_inbox.html',
