@@ -2,17 +2,13 @@
 
 {% load i18n django_htmx static tailwind_cli %}
 
-{% if debug %}
-    {% load django_browser_reload %}
-{% endif %}
-
 {% get_current_language as LANGUAGE_CODE %}
 
 <html lang="{{ LANGUAGE_CODE }}" data-theme="light">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Django App</title>
+        <title>{% block head_title %}Django App{% endblock head_title %}</title>
         {% tailwind_css %}
         <style>[x-cloak] { display: none !important; }</style>
         {% block extra_head %}{% endblock %}
@@ -21,9 +17,7 @@
         {% django_htmx_script %}
     </head>
     <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-        {% block content %}{% endblock %}
-        {% if debug %}
-            {% django_browser_reload_script %}
-        {% endif %}
+        {% block body %}{% block content %}{% endblock content %}{% endblock body %}
+        {% block extra_body %}{% endblock extra_body %}
     </body>
 </html>

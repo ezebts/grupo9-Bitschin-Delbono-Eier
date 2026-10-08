@@ -1,0 +1,28 @@
+{% load heroicons widget_tweaks %}
+<fieldset class="fieldset">
+    <label class="fieldset-legend" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% if field.field.widget.input_type == "password" %}
+        <div class="flex items-center gap-2 w-full"
+             x-data="{ show: false }"
+             x-effect="$el.querySelector('input').type = show ? 'text' : 'password'">
+            {% render_field field class="input flex-1" %}
+            <button type="button"
+                    class="btn btn-primary btn-square"
+                    aria-label="Mostrar contraseña"
+                    x-bind:aria-label="show ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    x-bind:aria-pressed="show"
+                    x-on:click="show = !show">
+                <span x-show="!show">{% heroicon_outline "eye" size=20 %}</span>
+                <span x-show="show" x-cloak>{% heroicon_outline "eye-slash" size=20 %}</span>
+            </button>
+        </div>
+    {% else %}
+        {% render_field field class="input w-full" %}
+    {% endif %}
+    {% if field.help_text %}
+        <div class="label whitespace-normal">{{ field.help_text|safe }}</div>
+    {% endif %}
+    {% for error in field.errors %}
+        <p class="text-error text-sm">{{ error }}</p>
+    {% endfor %}
+</fieldset>

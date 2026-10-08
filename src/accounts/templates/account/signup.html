@@ -1,0 +1,35 @@
+{% extends "account/base_entrance.html" %}
+
+{% block head_title %}Crear cuenta{% endblock head_title %}
+
+{% block content %}
+    <div class="space-y-2">
+        <h2 class="text-3xl font-bold">Creá tu cuenta</h2>
+        <p class="text-base-content/70">La forma más rápida es con Google: después solo te pedimos tu rol.</p>
+    </div>
+
+    {% include "accounts/_google_button.html" with label="Registrarte con Google" %}
+
+    <div class="divider">o con tu email</div>
+
+    <form method="post" action="{% url 'account_signup' %}" class="space-y-2">
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
+        {% endfor %}
+        {% include "accounts/_role_field.html" with field=form.role %}
+        <div class="grid sm:grid-cols-2 gap-x-3">
+            {% include "accounts/_field.html" with field=form.first_name %}
+            {% include "accounts/_field.html" with field=form.last_name %}
+        </div>
+        {% include "accounts/_field.html" with field=form.email %}
+        {% include "accounts/_field.html" with field=form.password1 %}
+        {% include "accounts/_field.html" with field=form.password2 %}
+        {{ redirect_field }}
+        <button type="submit" class="btn btn-primary btn-lg w-full">Crear cuenta</button>
+    </form>
+
+    <p class="text-center">
+        ¿Ya tenés cuenta? <a href="{{ login_url }}" class="link link-primary font-semibold">Ingresá</a>
+    </p>
+{% endblock content %}

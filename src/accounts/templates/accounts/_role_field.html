@@ -1,0 +1,23 @@
+<fieldset class="fieldset">
+    <legend class="fieldset-legend">{{ field.label }}</legend>
+    <div class="grid sm:grid-cols-2 gap-3">
+        {% for radio in field %}
+            <label class="flex items-start gap-3 p-4 rounded-box border-2 border-base-300 bg-base-100 cursor-pointer has-checked:border-primary has-checked:bg-primary/5">
+                {{ radio.tag }}
+                <span class="space-y-1">
+                    <span class="block font-semibold">{{ radio.choice_label }}</span>
+                    <span class="block text-sm text-base-content/70">
+                        {% if radio.data.value == "pharmacy" %}
+                            Recibo solicitudes por mail, envío presupuestos y actualizo los pedidos.
+                        {% else %}
+                            Pido presupuestos para mis recetas magistrales y sigo mis pedidos.
+                        {% endif %}
+                    </span>
+                </span>
+            </label>
+        {% endfor %}
+    </div>
+    {% for error in field.errors %}
+        <p class="text-error text-sm">{{ error }}</p>
+    {% endfor %}
+</fieldset>

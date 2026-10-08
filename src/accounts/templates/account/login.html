@@ -1,0 +1,33 @@
+{% extends "account/base_entrance.html" %}
+
+{% block head_title %}Ingresar{% endblock head_title %}
+
+{% block content %}
+    <div class="space-y-2">
+        <h2 class="text-3xl font-bold">Ingresar</h2>
+        <p class="text-base-content/70">Clientes y farmacias usan la misma puerta de entrada.</p>
+    </div>
+
+    {% include "accounts/_google_button.html" with label="Continuar con Google" %}
+
+    <div class="divider">o con tu email</div>
+
+    <form method="post" action="{% url 'account_login' %}" class="space-y-2">
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
+        {% endfor %}
+        {% include "accounts/_field.html" with field=form.login %}
+        {% include "accounts/_field.html" with field=form.password %}
+        <label class="label gap-2 py-2">
+            <input type="checkbox" name="{{ form.remember.html_name }}" class="checkbox checkbox-sm">
+            {{ form.remember.label }}
+        </label>
+        {{ redirect_field }}
+        <button type="submit" class="btn btn-primary btn-lg w-full">Ingresar</button>
+    </form>
+
+    <p class="text-center">
+        ¿No tenés cuenta? <a href="{{ signup_url }}" class="link link-primary font-semibold">Creá una</a>
+    </p>
+{% endblock content %}
