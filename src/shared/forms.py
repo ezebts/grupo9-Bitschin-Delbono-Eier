@@ -16,7 +16,10 @@ class TypedForm[TCleanedParams](forms.Form):
 
     @staticmethod
     def _validation_error(error: Error) -> ValidationError:
-        return ValidationError(error.code, code=error.code, params=error.details)
+        message = getattr(type(error), 'message', None)
+        if not isinstance(message, str) or not message:
+            message = error.code
+        return ValidationError(message, code=error.code, params=error.details)
 
     def add_error(self, field, error):
         if isinstance(error, Error):
