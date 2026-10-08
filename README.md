@@ -2,7 +2,7 @@
 
 App Web en Django 6. Desarrollo local con Docker Compose + `uv`.
 
-El código del proyecto debe ser escrito (y debemos mantenerlo) en Inglés. Sólo los textos/contenidos del frontend (o assets estáticos, entradas y salidas de la app, etc.) pueden estar en un idioma diferente, para estos vamos a usar Español (Argentina) por defecto.
+El código del proyecto y sus documentos/documentación deben ser escritos (y debemos mantenerlos) en Inglés. Sólo los textos/contenidos del frontend (o assets estáticos, entradas y salidas de la app, etc.) pueden estar en un idioma diferente, para estos vamos a usar Español (Argentina) por defecto.
 
 Separar las implementaciónes en diferentes contextos (diferentes django apps). Por ejemplo: `src.cuentas`, `src.pagos`, `src.pedidos`, etc.
 

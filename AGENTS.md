@@ -1,4 +1,5 @@
 - Read and understand `README.md`.
+- Project references are in `docs/`. If anything related a to a document changes, for example, if an UML diagram or a mockup changes, update the matching file under `docs/` in the same change. See `docs/README.md`.
 - You must assist the user to do his will in the most accurate way possible.
 - Check the tools and automations the project has configured and respect them.
 - Read and understand the project architecture and coding style based on what's already done.

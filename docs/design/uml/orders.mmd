@@ -1,0 +1,142 @@
+classDiagram
+    Pedido "1" *-- "1..*" PrescriptionFile
+    Pedido "1" *-- "*" StatusEvent
+    Pedido *-- PedidoCode
+    Pedido *-- PedidoStatus
+    Pedido *-- Urgency
+    Pedido *-- DeliveryPreference
+    StatusEvent *-- FulfillmentStatus
+    QuoteRequest "1" *-- "*" Quote
+    QuoteRequest *-- QuoteRequestStatus
+    Quote *-- DeliveryPreference
+    Conversation "1" ..> "1" QuoteRequest
+    Conversation "1" *-- "*" Message
+    Message *-- MessageAuthor
+
+    class Pedido {
+        clientAccountId: int
+        formula: str
+        presentation: str
+        note: str
+        +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, files) Pedido$
+        +updateDraft(formula, presentation, urgency, deliveryPreference, note)
+        +attach(file)
+        +submit()
+        +cancel()
+        +startPreparation(estimatedAt, note)
+        +completePreparation()
+        +dispatch()
+    }
+    class StatusEvent {
+        estimatedAt: datetime
+        note: str
+    }
+    class QuoteRequest {
+        pedidoId: int
+        pharmacyAccountId: int
+        +create(pedidoId, pharmacyAccountId) QuoteRequest$
+        +receiveQuote(price, readyAt, validUntil, deliveryPreference, shippingCost, message, pdf)
+        +reviseQuote(price, readyAt, validUntil, deliveryPreference, shippingCost, message, pdf)
+        +withdrawQuote()
+        +decline()
+        +rejectQuote()
+    }
+    class Quote {
+        price: Money
+        readyAt: datetime
+        validUntil: datetime
+        shippingCost: Money
+        message: str
+        pdf: File
+    }
+    class Conversation {
+        +create(quoteRequestId, author, text, files) Conversation$
+        +post(author, text, files)
+    }
+    class Message {
+        text: str
+        files: File
+        sentAt: datetime
+    }
+    class PrescriptionFile {
+        <<value>>
+        file: File
+        maxSize: int
+        +create(file) PrescriptionFile$
+    }
+    class PedidoCode {
+        <<value>>
+        prefix: str
+        number: int
+        +random() PedidoCode$
+    }
+    class PedidoStatus {
+        <<enum>>
+        DRAFT = "draft"
+        SENT = "sent"
+        CANCELLED = "cancelled"
+        +fromValue(raw) PedidoStatus$
+    }
+    class Urgency {
+        <<enum>>
+        AS_SOON_AS_POSSIBLE = "as_soon_as_possible"
+        THIS_WEEK = "this_week"
+        NO_RUSH = "no_rush"
+        +fromValue(raw) Urgency$
+    }
+    class DeliveryPreference {
+        <<enum>>
+        PICKUP = "pickup"
+        HOME_DELIVERY = "home_delivery"
+        +fromValue(raw) DeliveryPreference$
+    }
+    class FulfillmentStatus {
+        <<enum>>
+        ACCEPTED = "accepted"
+        IN_PREPARATION = "in_preparation"
+        READY_FOR_PICKUP = "ready_for_pickup"
+        DELIVERED = "delivered"
+        +fromValue(raw) FulfillmentStatus$
+    }
+    class QuoteRequestStatus {
+        <<enum>>
+        WAITING = "waiting"
+        QUOTED = "quoted"
+        DECLINED = "declined"
+        WITHDRAWN = "withdrawn"
+        REJECTED = "rejected"
+        ACCEPTED = "accepted"
+        NOT_CHOSEN = "not_chosen"
+        +fromValue(raw) QuoteRequestStatus$
+    }
+    class Money {
+        <<value>>
+        currency: str
+        amount: int
+        precision: int
+        +ARS(amount) Money$
+        +USD(amount) Money$
+    }
+    class MessageAuthor {
+        <<value>>
+        userId: int
+        displayName: str
+        +create(userId, displayName) MessageAuthor$
+    }
+
+    classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
+    class Pedido:::model
+    class StatusEvent:::model
+    class QuoteRequest:::model
+    class Quote:::model
+    class Conversation:::model
+    class Message:::model
+    class PrescriptionFile:::model
+    class PedidoCode:::model
+    class PedidoStatus:::model
+    class Urgency:::model
+    class DeliveryPreference:::model
+    class FulfillmentStatus:::model
+    class QuoteRequestStatus:::model
+    class Money:::model
+    class MessageAuthor:::model

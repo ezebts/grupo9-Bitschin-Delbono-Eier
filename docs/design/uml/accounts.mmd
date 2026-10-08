@@ -1,0 +1,141 @@
+classDiagram
+    User "1" --> "0..1" ClientAccount
+    User "1" --> "0..1" PharmacyAccount
+    User *-- AccountRole
+    ClientAccount *-- PhoneNumber
+    ClientAccount *-- Location
+    ClientAccount *-- HealthInsuranceNumber
+    ClientAccount *-- MailPreferences
+    Location *-- Coordinates
+    PharmacyAccount *-- PharmacyKind
+    PharmacyAccount *-- Cuit
+    PharmacyAccount *-- PhoneNumber
+    PharmacyAccount *-- Location
+    PharmacyAccount *-- OpeningHours
+    PharmacyAccount *-- DeliveryTerms
+    PharmacyAccount *-- PreparationTag
+    DeliveryTerms *-- Money
+
+    class User {
+        email: str
+        googleLink: str
+    }
+    class ClientAccount {
+        firstName: str
+        lastName: str
+        searchRadius: int
+        +create(user, firstName, lastName, phone, location, searchRadius, healthInsuranceNumber, mailPreferences) ClientAccount$
+        +updateProfile(firstName, lastName, phone, location, searchRadius, healthInsuranceNumber, mailPreferences)
+    }
+    class PharmacyAccount {
+        tradeName: str
+        legalName: str
+        technicalDirector: str
+        license: str
+        requestEmail: str
+        website: str
+        visible: bool
+        +create(user, kind, tradeName, legalName, cuit, technicalDirector, license, requestEmail, phone, website, location, openingHours, deliveryTerms, preparationTags) PharmacyAccount$
+        +updateProfile(kind, tradeName, legalName, cuit, technicalDirector, license, requestEmail, phone, website, location, openingHours, deliveryTerms, preparationTags)
+        +isOpen(at) bool
+    }
+    class AccountRole {
+        <<enum>>
+        CLIENT = "client"
+        PHARMACY = "pharmacy"
+        +fromValue(raw) AccountRole$
+    }
+    class PhoneNumber {
+        <<value>>
+        number: str
+        +AR(raw) PhoneNumber$
+    }
+    class Location {
+        <<value>>
+        address: str
+        postalCode: str
+        +create(address, postalCode, coordinates) Location$
+    }
+    class Coordinates {
+        <<value>>
+        latitude: float
+        longitude: float
+        +create(latitude, longitude) Coordinates$
+    }
+    class HealthInsuranceNumber {
+        <<value>>
+        number: str
+        +create(raw) HealthInsuranceNumber$
+    }
+    class MailPreferences {
+        <<value>>
+        onReply: bool
+        onStatusChange: bool
+        onQuoteExpiry: bool
+        +create(onReply, onStatusChange, onQuoteExpiry) MailPreferences$
+    }
+    class PharmacyKind {
+        <<enum>>
+        PHARMACY_WITH_LAB = "pharmacy_with_lab"
+        PREPARATION_LAB = "preparation_lab"
+        +fromValue(raw) PharmacyKind$
+    }
+    class Cuit {
+        <<value>>
+        number: str
+        +create(raw) Cuit$
+    }
+    class OpeningHours {
+        <<value>>
+        day: str
+        opens: time
+        closes: time
+        +create(slots) OpeningHours$
+        +isOpen(at) bool
+    }
+    class DeliveryTerms {
+        <<value>>
+        pickup: bool
+        homeDelivery: bool
+        radius: int
+        +pickupOnly() DeliveryTerms$
+        +withHomeDelivery(radius, baseCost) DeliveryTerms$
+    }
+    class Money {
+        <<value>>
+        currency: str
+        amount: int
+        precision: int
+        +ARS(amount) Money$
+        +USD(amount) Money$
+    }
+    class PreparationTag {
+        <<enum>>
+        CAPSULES = "capsules"
+        CREAMS = "creams"
+        SOLUTIONS = "solutions"
+        SYRUPS = "syrups"
+        OVULES = "ovules"
+        HORMONAL = "hormonal"
+        DERMATOLOGY = "dermatology"
+        VETERINARY = "veterinary"
+        GLUTEN_FREE = "gluten_free"
+        +fromValue(raw) PreparationTag$
+    }
+
+    classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
+    class User:::model
+    class ClientAccount:::model
+    class PharmacyAccount:::model
+    class AccountRole:::model
+    class PhoneNumber:::model
+    class Location:::model
+    class Coordinates:::model
+    class HealthInsuranceNumber:::model
+    class MailPreferences:::model
+    class PharmacyKind:::model
+    class Cuit:::model
+    class OpeningHours:::model
+    class DeliveryTerms:::model
+    class Money:::model
+    class PreparationTag:::model
