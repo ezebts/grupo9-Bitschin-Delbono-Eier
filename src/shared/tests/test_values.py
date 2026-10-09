@@ -106,6 +106,18 @@ def test_time_slot_rejects_a_single_hour():
         TimeSlot.create(name='weekday', opens=time(9, 0), closes=None)
 
 
+def test_money_without_amount_is_zero():
+    pesos = Money.ARS()
+
+    assert pesos.amount == Decimal('0.00')
+    assert pesos.currency is Money.Currency.ARS
+
+
+def test_money_rejects_too_many_digits():
+    with pytest.raises(InvalidMoneyError):
+        Money.ARS('10000000000.00')
+
+
 def test_pesos_are_quantized_to_centavos():
     money = Money.ARS('1500.505')
 

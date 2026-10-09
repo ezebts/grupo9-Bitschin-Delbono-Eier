@@ -1,233 +1,171 @@
-from functools import wraps
-
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
-from django.db import transaction
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import Http404
+from django.shortcuts import redirect
 from django.urls import reverse
-from django.utils import timezone
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.generic import FormView, TemplateView
 
-from chats.forms import CustomerMessageForm, InquiryForm, MessageForm
-from chats.models import Conversation, Message
-
-
-def _role_required(role):
-    def decorator(view):
-        @wraps(view)
-        @login_required
-        def wrapped_view(request, *args, **kwargs):
-            if request.user.role != role:
-                raise PermissionDenied
-            return view(request, *args, **kwargs)
-
-        return wrapped_view
-
-    return decorator
+from chats.commands.send_message import send_message
+from chats.forms import CustomerMessageForm, MessageForm
+from chats.models import Conversation
+from chats.queries.customer_inbox import (
+    get_customer_conversation,
+    get_customer_inbox,
+)
+from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
+from shared.views import RoleRequiredMixin
 
 
-def _inbox_context(request, selected=None, form=None):
-    conversations = Conversation.objects.prefetch_related('messages')
-    search = request.GET.get('search', '').strip()
-    filter_value = request.GET.get('filter', 'all')
-    if filter_value not in {'all', 'unread'}:
-        filter_value = 'all'
+class PharmacyInboxMixin(RoleRequiredMixin):
+    template_name = 'chats/inbox.html'
+    partial_template_name = 'chats/_inbox_content.html'
 
-    if search:
-        conversations = conversations.filter(
-            Q(customer_name__icontains=search)
-            | Q(customer_email__icontains=search)
-            | Q(subject__icontains=search)
-            | Q(messages__body__icontains=search),
-        ).distinct()
-    if filter_value == 'unread':
-        conversations = conversations.filter(waiting_for_pharmacy=True)
+    def allows(self, user):
+        return user.is_pharmacy
 
-    return {
-        'conversations': conversations,
-        'selected': selected,
-        'search': search,
-        'filter': filter_value,
-        'form': form or MessageForm(),
-        'open_count': Conversation.objects.count(),
-        'pending_count': Conversation.objects.filter(waiting_for_pharmacy=True).count(),
-        'today_count': Conversation.objects.filter(
-            created_at__date=timezone.localdate()
-        ).count(),
-        'today': timezone.localdate(),
-    }
-
-
-def _render_inbox(request, *, selected=None, form=None, show_chat=False):
-    context = _inbox_context(request, selected=selected, form=form)
-    context['show_chat'] = show_chat
-    return render(request, 'chats/_inbox_content.html', context)
-
-
-@require_http_methods(['GET'])
-@_role_required('pharmacy')
-def inbox(request):
-    conversation_id = request.GET.get('conversation_id') or request.GET.get(
-        'selected_id'
-    )
-    context = _inbox_context(request)
-    conversations = context['conversations']
-    selected = (
-        get_object_or_404(conversations, pk=conversation_id)
-        if conversation_id
-        else conversations.first()
-    )
-    context['selected'] = selected
-    if request.htmx:
-        context['show_chat'] = conversation_id is not None
-        return render(request, 'chats/_inbox_content.html', context)
-
-    context['show_chat'] = conversation_id is not None
-    return render(request, 'chats/inbox.html', context)
-
-
-@require_http_methods(['GET'])
-@_role_required('pharmacy')
-def conversation(request, conversation_id):
-    selected = get_object_or_404(
-        Conversation.objects.prefetch_related('messages'),
-        pk=conversation_id,
-    )
-    if not request.htmx:
-        return redirect('chats:inbox')
-
-    return _render_inbox(request, selected=selected, show_chat=True)
-
-
-@require_POST
-@_role_required('pharmacy')
-def send_message(request, conversation_id):
-    selected = get_object_or_404(Conversation, pk=conversation_id)
-    form = MessageForm(request.POST)
-    if form.is_valid():
-        with transaction.atomic():
-            Message.objects.create(
-                conversation=selected,
-                sender=Message.Sender.PHARMACY,
-                body=form.cleaned_data['message'],
-            )
-            Conversation.objects.filter(pk=selected.pk).update(
-                waiting_for_pharmacy=False,
-                updated_at=timezone.now(),
-            )
-        selected.refresh_from_db()
-        selected = Conversation.objects.prefetch_related('messages').get(pk=selected.pk)
-        if not request.htmx:
-            return redirect(f'{reverse("chats:inbox")}?conversation_id={selected.pk}')
-
-    if not request.htmx:
-        context = _inbox_context(request, selected=selected, form=form)
-        context['show_chat'] = True
-        return render(request, 'chats/inbox.html', context)
-
-    return _render_inbox(
-        request,
-        selected=selected,
-        form=MessageForm() if form.is_valid() else form,
-        show_chat=True,
-    )
-
-
-@require_http_methods(['GET', 'POST'])
-@_role_required('customer')
-def new_inquiry(request):
-    if request.method == 'POST':
-        form = InquiryForm(request.POST)
-        if form.is_valid():
-            if not request.user.email:
-                form.add_error(
-                    None,
-                    'Agregá un correo electrónico a tu cuenta '
-                    'antes de enviar una consulta.',
-                )
-                return render(request, 'chats/new_inquiry.html', {'form': form})
-
-            with transaction.atomic():
-                conversation = Conversation.objects.create(
-                    customer=request.user,
-                    customer_name=request.user.get_full_name()
-                    or request.user.get_username(),
-                    customer_email=request.user.email,
-                    customer_phone=form.cleaned_data['customer_phone'],
-                    subject=form.cleaned_data['subject'],
-                )
-                Message.objects.create(
-                    conversation=conversation,
-                    sender=Message.Sender.CUSTOMER,
-                    body=form.cleaned_data['message'],
-                )
-            return redirect(
-                f'{reverse("chats:customer_inbox")}?conversation_id={conversation.pk}',
-            )
-    else:
-        form = InquiryForm()
-
-    return render(request, 'chats/new_inquiry.html', {'form': form})
-
-
-@_role_required('customer')
-@require_http_methods(['GET'])
-def customer_inbox(request):
-    conversations = Conversation.objects.filter(customer=request.user).prefetch_related(
-        'messages'
-    )
-    conversation_id = request.GET.get('conversation_id')
-    selected = (
-        get_object_or_404(conversations, pk=conversation_id)
-        if conversation_id
-        else conversations.first()
-    )
-
-    return render(
-        request,
-        'chats/customer_inbox.html',
-        {
-            'conversations': conversations,
-            'selected': selected,
-            'form': CustomerMessageForm(),
-        },
-    )
-
-
-@_role_required('customer')
-@require_POST
-def customer_reply(request, conversation_id):
-    selected = get_object_or_404(
-        Conversation.objects.filter(customer=request.user),
-        pk=conversation_id,
-    )
-    form = CustomerMessageForm(request.POST)
-    if form.is_valid():
-        with transaction.atomic():
-            Message.objects.create(
-                conversation=selected,
-                sender=Message.Sender.CUSTOMER,
-                body=form.cleaned_data['message'],
-            )
-            Conversation.objects.filter(pk=selected.pk).update(
-                waiting_for_pharmacy=True,
-                updated_at=timezone.now(),
-            )
-
-        return redirect(
-            f'{reverse("chats:customer_inbox")}?conversation_id={selected.pk}'
+    def conversation_id(self):
+        return self.kwargs.get('conversation_id') or self.request.GET.get(
+            'conversation_id'
         )
 
-    conversations = Conversation.objects.filter(customer=request.user).prefetch_related(
-        'messages'
-    )
-    return render(
-        request,
-        'chats/customer_inbox.html',
-        {
-            'conversations': conversations,
-            'selected': selected,
-            'form': form,
-        },
-    )
+    def get_template_names(self):
+        if self.request.htmx:
+            return [self.partial_template_name]
+        return [self.template_name]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        search = self.request.GET.get('search', '').strip()
+        filter_value = self.request.GET.get('filter', 'all')
+        if filter_value not in {'all', 'unread'}:
+            filter_value = 'all'
+
+        user_id = self.request.user.id
+        inbox = get_pharmacy_inbox(
+            user_id,
+            search,
+            unread_only=filter_value == 'unread',
+        )
+        conversation_id = self.conversation_id()
+
+        if conversation_id:
+            try:
+                selected = get_conversation(user_id, conversation_id)
+            except Conversation.DoesNotExist:
+                raise Http404 from None
+        elif inbox.conversations:
+            selected = get_conversation(user_id, inbox.conversations[0].id)
+        else:
+            selected = None
+
+        context.update(
+            conversations=inbox.conversations,
+            selected=selected,
+            search=search,
+            filter=filter_value,
+            form=context.get('form', MessageForm()),
+            open_count=inbox.open_count,
+            pending_count=inbox.pending_count,
+        )
+        return context
+
+
+class PharmacyInboxView(PharmacyInboxMixin, TemplateView):
+    pass
+
+
+class SendMessageView(PharmacyInboxMixin, FormView):
+    form_class = MessageForm
+    http_method_names = ('post',)
+
+    def form_valid(self, form):
+        conversation_id = self.kwargs['conversation_id']
+        send_message(
+            self.request.user.id,
+            conversation_id,
+            form.cleaned_data['message'],
+        )
+
+        if not self.request.htmx:
+            return redirect(
+                f'{reverse("chats:inbox")}?conversation_id={conversation_id}'
+            )
+
+        return self.render_to_response(self.get_context_data(form=MessageForm()))
+
+
+class CustomerInboxMixin(RoleRequiredMixin):
+    template_name = 'chats/customer_inbox.html'
+    partial_template_name = 'chats/_customer_chat.html'
+
+    def allows(self, user):
+        return user.is_customer
+
+    def conversation_id(self):
+        return self.kwargs.get('conversation_id') or self.request.GET.get(
+            'conversation_id'
+        )
+
+    def get_template_names(self):
+        if self.request.htmx:
+            return [self.partial_template_name]
+        return [self.template_name]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_id = self.request.user.id
+        conversation_id = self.conversation_id()
+        inbox = get_customer_inbox(user_id)
+        conversations = inbox.conversations
+
+        if conversation_id:
+            try:
+                selected = get_customer_conversation(user_id, conversation_id)
+            except Conversation.DoesNotExist:
+                raise Http404 from None
+        elif conversations:
+            selected = get_customer_conversation(user_id, conversations[0].id)
+        else:
+            selected = None
+
+        context.update(
+            conversations=conversations,
+            selected=selected,
+            form=context.get('form', CustomerMessageForm()),
+        )
+        return context
+
+
+class CustomerInboxView(CustomerInboxMixin, TemplateView):
+    pass
+
+
+class CustomerReplyView(CustomerInboxMixin, FormView):
+    form_class = CustomerMessageForm
+    http_method_names = ('post',)
+
+    def post(self, request, *args, **kwargs):
+        try:
+            get_customer_conversation(
+                request.user.id,
+                kwargs['conversation_id'],
+            )
+        except Conversation.DoesNotExist:
+            raise Http404 from None
+
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        conversation_id = self.kwargs['conversation_id']
+        send_message(
+            self.request.user.id,
+            conversation_id,
+            form.cleaned_data['message'],
+        )
+
+        if not self.request.htmx:
+            return redirect(
+                f'{reverse("chats:customer_inbox")}?conversation_id={conversation_id}'
+            )
+
+        return self.render_to_response(
+            self.get_context_data(form=CustomerMessageForm())
+        )

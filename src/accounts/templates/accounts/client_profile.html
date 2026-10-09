@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block head_title %}Mi perfil{% endblock head_title %}
+
+{% block content %}
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+            {% include "shared/_messages.html" %}
+            <h1 class="text-4xl font-bold tracking-tight">Mi perfil</h1>
+            <div class="flex flex-wrap gap-6 items-start">
+                <aside class="flex-1 min-w-72 space-y-4 lg:sticky lg:top-6 self-start">
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 flex flex-col items-center gap-3 text-center">
+                        <span aria-hidden="true" class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#12201B] text-white text-3xl font-bold">{{ form.first_name.value|default:"C"|slice:":1"|upper }}{{ form.last_name.value|slice:":1"|upper }}</span>
+                        <div class="space-y-1">
+                            <p class="text-2xl font-bold">{{ form.first_name.value }} {{ form.last_name.value }}</p>
+                            <p class="text-base-content/70">{{ profile.email }}</p>
+                        </div>
+                        {% if profile.google_linked %}
+                            <p class="inline-flex items-center px-3 py-1.5 rounded-full bg-base-200 text-sm font-semibold">Vinculada con Google</p>
+                        {% endif %}
+                        <form method="post" action="{% url 'account_logout' %}" class="w-full">
+                            {% csrf_token %}
+                            <button type="submit" class="btn bg-base-100 border border-base-300 w-full">Cerrar sesión</button>
+                        </form>
+                    </section>
+                </aside>
+                <form method="post" class="flex-[3_1_35rem] space-y-5" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        {% for error in form.non_field_errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    {% endif %}
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <h2 class="text-2xl font-semibold">Datos personales</h2>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            {% include "accounts/_field.html" with field=form.first_name %}
+                            {% include "accounts/_field.html" with field=form.last_name %}
+                            <fieldset class="fieldset">
+                                <span class="fieldset-legend">Email</span>
+                                <p class="min-h-12 px-3.5 py-3 rounded-lg bg-base-200 text-base-content/80">{{ profile.email }}</p>
+                                {% if profile.google_linked %}
+                                    <p class="label whitespace-normal">Viene de tu cuenta de Google.</p>
+                                {% endif %}
+                            </fieldset>
+                            {% include "accounts/_field.html" with field=form.phone %}
+                            {% include "accounts/_field.html" with field=form.health_insurance_number %}
+                        </div>
+                    </section>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <div class="space-y-1">
+                            <h2 class="text-2xl font-semibold">Ubicación y entrega</h2>
+                            <p class="text-base-content/70">Centra el mapa al buscar farmacias y se comparte solo con la farmacia que aceptes, si pedís envío.</p>
+                        </div>
+                        {% include "accounts/_field.html" with field=form.address %}
+                        <div class="grid sm:grid-cols-3 gap-4">
+                            {% include "accounts/_field.html" with field=form.locality %}
+                            {% include "accounts/_field.html" with field=form.postal_code %}
+                            {% include "accounts/_field.html" with field=form.search_radius %}
+                        </div>
+                    </section>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-3">
+                        <h2 class="text-2xl font-semibold">Avisos por mail</h2>
+                        {% include "accounts/_checkbox.html" with field=form.mail_on_reply %}
+                        {% include "accounts/_checkbox.html" with field=form.mail_on_status_change %}
+                        {% include "accounts/_checkbox.html" with field=form.mail_on_quote_expiry %}
+                    </section>
+                    <div class="flex justify-end gap-3">
+                        <a href="{% url 'profile' %}" class="btn btn-lg bg-base-100 border border-base-300">Descartar</a>
+                        <button type="submit" class="btn btn-primary btn-lg">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+{% endblock content %}

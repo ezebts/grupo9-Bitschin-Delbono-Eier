@@ -1,0 +1,13 @@
+{% load widget_tweaks %}
+<label class="flex items-start gap-3 cursor-pointer">
+    {% render_field field class="checkbox checkbox-primary mt-1" %}
+    <span class="space-y-1">
+        <span class="block font-medium">{{ field.label }}</span>
+        {% if field.help_text %}
+            <span class="block text-sm text-base-content/70">{{ field.help_text }}</span>
+        {% endif %}
+    </span>
+</label>
+{% for error in field.errors %}
+    <p class="text-error text-sm">{{ error }}</p>
+{% endfor %}

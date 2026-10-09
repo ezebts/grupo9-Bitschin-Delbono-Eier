@@ -17,7 +17,12 @@
         {% django_htmx_script %}
     </head>
     <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-        {% block body %}{% block content %}{% endblock content %}{% endblock body %}
+        {% block body %}
+            {% if user.is_authenticated %}
+                {% include "shared/_nav.html" %}
+            {% endif %}
+            {% block content %}{% endblock content %}
+        {% endblock body %}
         {% block extra_body %}{% endblock extra_body %}
     </body>
 </html>

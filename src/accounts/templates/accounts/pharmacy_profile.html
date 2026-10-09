@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block head_title %}Perfil de la farmacia{% endblock head_title %}
+
+{% block content %}
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+            {% include "shared/_messages.html" %}
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="space-y-1.5">
+                    <h1 class="text-4xl font-bold tracking-tight">Perfil de la farmacia</h1>
+                    <p class="text-base-content/70">Estos datos definen cómo te encuentran los clientes en el mapa y adónde llegan los mails.</p>
+                </div>
+                <label class="inline-flex items-center gap-3 min-h-12 px-4 rounded-xl bg-[#E2F0EA] text-[#0A5141] font-bold cursor-pointer">
+                    {% render_field form.visible class="checkbox checkbox-primary" form="pharmacy-profile" %}
+                    Visible en la búsqueda
+                </label>
+            </div>
+            <div class="flex flex-wrap gap-6 items-start">
+                <form id="pharmacy-profile" method="post" class="flex-[2_1_36rem] space-y-5" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        {% for error in form.non_field_errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    {% endif %}
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <h2 class="text-2xl font-semibold">Datos del establecimiento</h2>
+                        {% include "accounts/_choices.html" with field=form.kind pills=True %}
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            {% include "accounts/_field.html" with field=form.trade_name %}
+                            {% include "accounts/_field.html" with field=form.legal_name %}
+                            {% include "accounts/_field.html" with field=form.cuit %}
+                            {% include "accounts/_field.html" with field=form.technical_director %}
+                            {% include "accounts/_field.html" with field=form.license %}
+                        </div>
+                    </section>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <h2 class="text-2xl font-semibold">Contacto y avisos por mail</h2>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            {% include "accounts/_field.html" with field=form.request_email %}
+                            {% include "accounts/_field.html" with field=form.phone %}
+                            {% include "accounts/_field.html" with field=form.website %}
+                        </div>
+                    </section>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <h2 class="text-2xl font-semibold">Ubicación</h2>
+                        {% include "accounts/_field.html" with field=form.address %}
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            {% include "accounts/_field.html" with field=form.locality %}
+                            {% include "accounts/_field.html" with field=form.postal_code %}
+                        </div>
+                    </section>
+                    <div class="grid lg:grid-cols-2 gap-5">
+                        <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                            <h2 class="text-2xl font-semibold">Horarios</h2>
+                            {% include "accounts/_hours.html" with day="Lun a vie" closed=form.weekday_closed opens=form.weekday_opens closes=form.weekday_closes %}
+                            {% include "accounts/_hours.html" with day="Sábados" closed=form.saturday_closed opens=form.saturday_opens closes=form.saturday_closes %}
+                            {% include "accounts/_hours.html" with day="Dom y feriados" closed=form.sunday_closed opens=form.sunday_opens closes=form.sunday_closes %}
+                        </section>
+                        <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                            <h2 class="text-2xl font-semibold">Entregas</h2>
+                            {% include "accounts/_checkbox.html" with field=form.pickup %}
+                            {% include "accounts/_checkbox.html" with field=form.home_delivery %}
+                            {% include "accounts/_field.html" with field=form.delivery_radius %}
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">{{ form.delivery_base_cost.label }}</legend>
+                                <div class="flex gap-2">
+                                    <div class="min-w-28 shrink-0">
+                                        <label class="sr-only" for="{{ form.delivery_currency.id_for_label }}">{{ form.delivery_currency.label }}</label>
+                                        {% render_field form.delivery_currency class="select w-full" %}
+                                        {% for error in form.delivery_currency.errors %}
+                                            <p class="text-error text-sm">{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="flex-1">
+                                        <label class="sr-only" for="{{ form.delivery_base_cost.id_for_label }}">{{ form.delivery_base_cost.label }}</label>
+                                        {% render_field form.delivery_base_cost class="input w-full" %}
+                                        {% for error in form.delivery_base_cost.errors %}
+                                            <p class="text-error text-sm">{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </section>
+                    </div>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <div class="space-y-1">
+                            <h2 class="text-2xl font-semibold">{{ form.preparation_tags.label }}</h2>
+                            {% if form.preparation_tags.help_text %}
+                                <p class="text-base-content/70">{{ form.preparation_tags.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            {% for checkbox in form.preparation_tags %}
+                                <label class="inline-flex items-center gap-2 min-h-11 px-3.5 rounded-full border border-base-300 cursor-pointer has-checked:border-primary has-checked:bg-primary/10 has-checked:font-semibold">
+                                    {{ checkbox.tag }}
+                                    <span>{{ checkbox.choice_label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% for error in form.preparation_tags.errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </section>
+                    <div class="flex justify-end gap-3">
+                        <a href="{% url 'profile' %}" class="btn btn-lg bg-base-100 border border-base-300">Descartar</a>
+                        <button type="submit" class="btn btn-primary btn-lg">Guardar cambios</button>
+                    </div>
+                </form>
+                <aside class="flex-1 min-w-80 space-y-4 lg:sticky lg:top-6 self-start">
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-6 space-y-3">
+                        <h2 class="text-sm font-bold text-base-content/70">Así te ven los clientes</h2>
+                        <div class="flex gap-3 items-start p-4 border border-base-300 rounded-2xl">
+                            <span aria-hidden="true" class="mt-0.5 w-5 h-5 rounded-md border-2 border-base-300 shrink-0"></span>
+                            <span class="min-w-0 space-y-1.5">
+                                <span class="block font-bold">{{ form.trade_name.value|default:"Tu farmacia" }}</span>
+                                <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-[#51605A]">
+                                    {% for choice in form.kind %}
+                                        {% if choice.data.selected %}
+                                            {% if choice.data.value == 'pharmacy_with_lab' %}
+                                                <span class="shrink-0 px-2 py-0.5 rounded-md text-xs font-bold bg-[#E2F0EA] text-[#0A5141]">Farmacia</span>
+                                            {% else %}
+                                                <span class="shrink-0 px-2 py-0.5 rounded-md text-xs font-bold bg-[#E7EEFD] text-[#1E4FC2]">Laboratorio</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if form.address.value %}
+                                        <span class="min-w-0">{{ form.address.value }}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="flex flex-wrap gap-x-2 gap-y-1.5 items-center text-sm">
+                                    {% if form.weekday_closed.value %}
+                                        <span class="font-semibold">Cerrado entre semana</span>
+                                    {% elif form.weekday_closes.value %}
+                                        <span class="font-semibold text-[#0A5141]">Abierta · cierra {{ form.weekday_closes.value|time:"H:i" }}</span>
+                                    {% endif %}
+                                    {% for checkbox in form.preparation_tags %}
+                                        {% if checkbox.data.selected %}
+                                            <span class="px-2 py-0.5 rounded-full bg-[#F3F5F2] text-[#3F4B47]">{{ checkbox.choice_label }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if form.home_delivery.value %}
+                                        <span class="px-2 py-0.5 rounded-full bg-[#F3F5F2] text-[#3F4B47]">Envío</span>
+                                    {% endif %}
+                                </span>
+                            </span>
+                        </div>
+                        <p class="text-sm text-base-content/70">La distancia se calcula desde la zona de cada cliente.</p>
+                    </section>
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-6 space-y-3">
+                        <h2 class="text-sm font-bold text-base-content/70">Cuenta</h2>
+                        <p class="text-sm font-semibold">{{ profile.email }}</p>
+                        {% if profile.google_linked %}
+                            <p class="text-sm text-base-content/70">Vinculada con Google</p>
+                        {% endif %}
+                        <form method="post" action="{% url 'account_logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn bg-base-100 border border-base-300 w-full">Cerrar sesión</button>
+                        </form>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </main>
+{% endblock content %}

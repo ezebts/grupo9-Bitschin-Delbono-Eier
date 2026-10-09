@@ -1,101 +1,81 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block head_title %}Mis consultas | Magistral{% endblock %}
-
-{% block extra_head %}
-    <link rel="stylesheet" href="{% static 'chats/css/inbox.css' %}">
-{% endblock %}
+{% block head_title %}Chat | Magistral{% endblock %}
 
 {% block content %}
-    <main class="customer-inbox-page">
-        <header class="customer-inbox-header">
-            <a class="brand" href="{% url 'chats:new_inquiry' %}">
-                <span class="brand-mark" aria-hidden="true">✚</span><span>magistral</span>
-            </a>
-            <nav class="customer-nav" aria-label="Menú del cliente">
-                <a class="selected" href="{% url 'chats:customer_inbox' %}">Mis consultas</a>
-                <a href="{% url 'chats:new_inquiry' %}">Nueva consulta</a>
-            </nav>
-            <div class="customer-account">
-                <span>{{ request.user.get_full_name|default:request.user.email }}</span>
-                <form method="post" action="{% url 'account_logout' %}">
-                    {% csrf_token %}
-                    <button type="submit">Cerrar sesión</button>
-                </form>
-            </div>
-        </header>
-        <section class="customer-inbox-main">
-            <div class="customer-page-title">
-                <div>
-                    <p class="eyebrow">TU ESPACIO</p>
-                    <h1>Mis consultas</h1>
-                    <p class="page-subtitle">Seguí tus conversaciones con la farmacia desde acá.</p>
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-5 pb-12 flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+                <nav aria-label="Ruta" class="text-sm text-[#51605A]">
+                    <a href="{% url 'chats:customer_inbox' %}" class="font-semibold">Mis pedidos</a>
+                    <span aria-hidden="true">/</span>
+                    <span aria-label="Código del pedido. Sale del pedido.">—</span>
+                </nav>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+                    <h1 class="text-3xl font-bold tracking-tight leading-tight">Chat con farmacias</h1>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-bold bg-[#E7EEFD] text-[#1E4FC2]" aria-label="Presupuestos recibidos. Sale del pedido.">
+                        <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                        —
+                    </span>
                 </div>
-                <a class="send-button" href="{% url 'chats:new_inquiry' %}">Nueva consulta <span aria-hidden="true">＋</span></a>
             </div>
 
-            <section class="customer-conversations">
-                <div class="customer-conversation-list">
-                    <h2>Conversaciones</h2>
-                    {% for conversation in conversations %}
-                        <a class="customer-conversation-link{% if selected.pk == conversation.pk %} selected{% endif %}" href="{% url 'chats:customer_inbox' %}?conversation_id={{ conversation.pk }}">
-                            <span class="customer-conversation-copy">
-                                <strong>{{ conversation.subject }}</strong>
-                                <span>{% if conversation.last_message %}{{ conversation.last_message.body|truncatechars:65 }}{% else %}Sin mensajes{% endif %}</span>
-                            </span>
-                            <span class="customer-conversation-meta">
-                                <time>{{ conversation.updated_at|date:"d/m H:i" }}</time>
-                                {% if conversation.waiting_for_pharmacy %}<span class="tag tag-amber">Esperando respuesta</span>{% else %}<span class="tag tag-green">Respondida</span>{% endif %}
-                            </span>
-                        </a>
-                    {% empty %}
-                        <div class="customer-no-conversations">
-                            <h2>Todavía no tenés consultas</h2>
-                            <p>Cuando le escribas a la farmacia, tu conversación va a aparecer acá.</p>
-                            <a href="{% url 'chats:new_inquiry' %}">Enviar una consulta</a>
-                        </div>
-                    {% endfor %}
-                </div>
+            <div class="flex flex-wrap gap-4 items-start">
+                {% include 'chats/_customer_chat.html' %}
 
-                <div class="customer-chat-panel">
-                    {% if selected %}
-                        <header class="customer-chat-heading">
-                            <span class="brand-mark" aria-hidden="true">✚</span>
-                            <div>
-                                <h2>{{ selected.subject }}</h2>
-                                <span>Farmacia · Actualizada {{ selected.updated_at|date:"d/m/Y H:i" }}</span>
-                            </div>
-                            {% if selected.waiting_for_pharmacy %}<span class="tag tag-amber">Esperando respuesta</span>{% else %}<span class="tag tag-green">Respondida</span>{% endif %}
-                        </header>
-                        <div class="customer-message-list" aria-live="polite">
-                            {% for message in selected.messages.all %}
-                                <div class="message-row{% if message.sender == 'customer' %} message-outgoing{% else %} message-incoming{% endif %}">
-                                    <div class="message-bubble">
-                                        <span class="customer-message-sender">{% if message.sender == 'customer' %}Vos{% else %}Farmacia{% endif %}</span>
-                                        <p>{{ message.body }}</p>
-                                        <span class="message-meta"><time>{{ message.created_at|date:"d/m/Y H:i" }}</time></span>
-                                    </div>
-                                </div>
-                            {% empty %}
-                                <p class="no-conversations">Todavía no hay mensajes en esta conversación.</p>
-                            {% endfor %}
-                        </div>
-                        <form class="customer-reply-form" method="post" action="{% url 'chats:customer_reply' selected.pk %}">
-                            {% csrf_token %}
-                            <label for="{{ form.message.id_for_label }}">Responder</label>
-                            {{ form.message }}
-                            {% for error in form.message.errors %}<span class="form-error">{{ error }}</span>{% endfor %}
-                            <button class="send-button" type="submit">Enviar respuesta <span aria-hidden="true">→</span></button>
-                        </form>
-                    {% else %}
-                        <div class="customer-no-conversations">
-                            <h2>Elegí una conversación</h2>
-                            <p>Seleccioná una consulta para ver las respuestas y continuar el intercambio.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </section>
-        </section>
+                <aside class="w-full lg:w-80 shrink-0 flex flex-col gap-4">
+                    <section aria-labelledby="det-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3.5">
+                        <h2 id="det-titulo" class="text-[15px] font-bold">Tu solicitud</h2>
+                        <p class="text-sm text-[#51605A]">Sale del pedido.</p>
+                        <dl class="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-2 text-sm">
+                            <dt class="text-[#51605A]">Tipo</dt><dd class="font-semibold" aria-label="Tipo. Sale del pedido.">—</dd>
+                            <dt class="text-[#51605A]">Cantidad</dt><dd class="font-semibold" aria-label="Cantidad. Sale del pedido.">—</dd>
+                            <dt class="text-[#51605A]">Para</dt><dd class="font-semibold" aria-label="Urgencia. Sale del pedido.">—</dd>
+                            <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold" aria-label="Entrega. Sale del pedido.">—</dd>
+                            <dt class="text-[#51605A]">Enviada</dt><dd class="font-semibold" aria-label="Fecha de envío. Sale del pedido.">—</dd>
+                        </dl>
+                        <div class="h-28 rounded-xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center text-[13px] font-semibold text-[#3F4B47]">Receta del pedido</div>
+                    </section>
+                    <section aria-labelledby="comp-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3">
+                        <h2 id="comp-titulo" class="text-[15px] font-bold">Comparar presupuestos</h2>
+                        <p class="text-sm text-[#51605A]">Sale del pedido.</p>
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="text-left pb-2 font-semibold text-[#51605A]">Farmacia</th>
+                                    <th scope="col" class="text-right pb-2 font-semibold text-[#51605A]">Precio</th>
+                                    <th scope="col" class="text-right pb-2 font-semibold text-[#51605A]">Plazo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="py-2 border-t border-base-300 text-[#51605A]">—</td>
+                                    <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                    <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </aside>
+            </div>
+        </div>
     </main>
+    <script>
+        function pinMessages() {
+            const messages = document.querySelector('[data-messages]')
+            if (messages) messages.scrollTop = messages.scrollHeight
+        }
+        pinMessages()
+        document.body.addEventListener('htmx:afterSwap', () => {
+            pinMessages()
+            document.querySelector('[data-chat-form] textarea')?.focus()
+        })
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.target.tagName !== 'TEXTAREA') return
+            const form = event.target.closest('[data-chat-form]')
+            if (!form) return
+            event.preventDefault()
+            form.requestSubmit()
+        })
+    </script>
 {% endblock %}

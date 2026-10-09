@@ -5,20 +5,16 @@ from chats import views
 app_name = 'chats'
 
 urlpatterns = [
-    path('', views.inbox, name='inbox'),
-    path('new/', views.new_inquiry, name='new_inquiry'),
-    path('my/', views.customer_inbox, name='customer_inbox'),
+    path('', views.PharmacyInboxView.as_view(), name='inbox'),
+    path('my/', views.CustomerInboxView.as_view(), name='customer_inbox'),
     path(
         'my/<int:conversation_id>/messages/',
-        views.customer_reply,
+        views.CustomerReplyView.as_view(),
         name='customer_reply',
     ),
     path(
-        'conversations/<int:conversation_id>/', views.conversation, name='conversation'
-    ),
-    path(
         'conversations/<int:conversation_id>/messages/',
-        views.send_message,
+        views.SendMessageView.as_view(),
         name='send_message',
     ),
 ]

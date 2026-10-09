@@ -11,7 +11,9 @@ classDiagram
     Quote *-- DeliveryPreference
     Conversation "1" ..> "1" QuoteRequest
     Conversation "1" *-- "*" Message
-    Message *-- MessageAuthor
+    Message <|-- UserMessage
+    Message *-- MessageSender
+    UserMessage *-- MessageAuthor
 
     class Pedido {
         clientAccountId: int
@@ -50,13 +52,23 @@ classDiagram
         pdf: File
     }
     class Conversation {
+        title: str
         +create(quoteRequestId, author, text, files) Conversation$
-        +post(author, text, files)
+        +sendMessage(userId, displayName, text, files)
+        +sendSystemMessage(text)
     }
     class Message {
         text: str
-        files: File
         sentAt: datetime
+    }
+    class MessageSender {
+        <<enum>>
+        CUSTOMER = "customer"
+        PHARMACY = "pharmacy"
+        SYSTEM = "system"
+    }
+    class UserMessage {
+        files: File
     }
     class PrescriptionFile {
         <<value>>
@@ -111,9 +123,12 @@ classDiagram
     }
     class Money {
         <<value>>
+        amount: Decimal
         currency: str
-        amount: int
-        precision: int
+        decimal_places: int
+        maxDigits: int
+        rounding: str
+        +create(currency, amount) Money$
         +ARS(amount) Money$
         +USD(amount) Money$
     }
@@ -121,7 +136,6 @@ classDiagram
         <<value>>
         userId: int
         displayName: str
-        +create(userId, displayName) MessageAuthor$
     }
 
     classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
@@ -131,6 +145,8 @@ classDiagram
     class Quote:::model
     class Conversation:::model
     class Message:::model
+    class MessageSender:::model
+    class UserMessage:::model
     class PrescriptionFile:::model
     class PedidoCode:::model
     class PedidoStatus:::model

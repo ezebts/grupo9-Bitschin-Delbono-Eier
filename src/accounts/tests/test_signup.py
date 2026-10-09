@@ -1,8 +1,7 @@
 import pytest
 from django.urls import reverse
 
-from accounts.forms import SignupForm
-from accounts.models import User
+from accounts.models import ClientAccount, PharmacyAccount, User
 
 pytestmark = pytest.mark.django_db
 
@@ -22,25 +21,23 @@ def email_signup(client, role):
 
 
 @pytest.mark.parametrize('role', User.Role.values)
-def test_email_signup_saves_selected_role(client, role):
+def test_email_signup_opens_an_account_for_the_selected_role(client, role):
     email_signup(client, role)
 
-    assert User.objects.get(email='ana@example.com').role == role
+    user = User.objects.get(email='ana@example.com')
+    assert user.role == role
+    assert user.first_name == 'Ana'
+    assert user.last_name == 'Pérez'
+    assert user.get_initials() == 'AP'
+    if role == User.Role.CUSTOMER:
+        assert user.client_account.pk
+        assert not PharmacyAccount.objects.exists()
+        return
+    assert user.pharmacy_account.pk
+    assert not ClientAccount.objects.exists()
 
 
 def test_email_signup_requires_role(client):
     email_signup(client, '')
 
     assert not User.objects.exists()
-
-
-def test_google_signup_saves_selected_role():
-    user = User.objects.create_user(username='ana', email='ana@example.com')
-    form = SignupForm(
-        data={'role': User.Role.PHARMACY, 'first_name': 'Ana', 'last_name': 'Pérez'},
-    )
-
-    assert form.is_valid()
-    form.signup(None, user)
-    user.refresh_from_db()
-    assert user.is_pharmacy

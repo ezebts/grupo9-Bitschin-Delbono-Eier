@@ -1,6 +1,7 @@
 from django import forms
 
-from .models import User
+from accounts.commands.signup import signup
+from accounts.models import User
 
 
 class SignupForm(forms.Form):
@@ -9,9 +10,10 @@ class SignupForm(forms.Form):
         choices=User.Role.choices,
         widget=forms.RadioSelect(attrs={'class': 'radio radio-primary'}),
     )
+
     first_name = forms.CharField(label='Nombre', max_length=150)
+
     last_name = forms.CharField(label='Apellido', max_length=150)
 
     def signup(self, _request, user):
-        user.role = self.cleaned_data['role']
-        user.save(update_fields=['role'])
+        signup(user, self.cleaned_data['role'])

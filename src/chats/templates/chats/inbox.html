@@ -1,86 +1,30 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block head_title %}Mensajes | Magistral{% endblock %}
-
-{% block extra_head %}
-    <link rel="stylesheet" href="{% static 'chats/css/inbox.css' %}">
-{% endblock %}
+{% block head_title %}Solicitudes | Magistral{% endblock %}
 
 {% block content %}
-    <div class="inbox-shell">
-        <aside class="sidebar">
-            <a class="brand" href="{% url 'chats:inbox' %}" aria-label="Magistral, inicio">
-                <span class="brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 32 32" fill="none"><path d="M16 4v24M4 16h24M7.5 7.5l17 17m0-17-17 17" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="16" r="5" fill="currentColor"/></svg>
-                </span>
-                <span>magistral</span>
-            </a>
-
-            <div class="pharmacy-switcher">
-                <span class="pharmacy-avatar">F</span>
-                <span class="pharmacy-copy"><strong>Farmacia del Sol</strong><small>Panel de farmacia</small></span>
-                <svg class="switcher-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m6 8 4 4 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-
-            <span class="nav-label">MENÚ</span>
-            <nav class="side-nav" aria-label="Navegación principal">
-                <a class="nav-item active" href="{% url 'chats:inbox' %}" aria-current="page">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.7-3.4A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 11.5h7M8.5 14.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                    <span>Mensajes</span><span class="nav-count">{{ pending_count }}</span>
-                </a>
-                <div class="nav-item nav-item-muted" aria-label="Pedidos (próximamente)">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7.5h14l-1 12H6l-1-12ZM9 8V6a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span>Pedidos</span>
-                </div>
-                <div class="nav-item nav-item-muted" aria-label="Clientes (próximamente)">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8M17 14a5 5 0 0 1 3.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                    <span>Clientes</span>
-                </div>
-            </nav>
-
-            <div class="sidebar-bottom">
-                <div class="help-card">
-                    <span class="help-icon" aria-hidden="true">?</span>
-                    <strong>¿Necesitás ayuda?</strong>
-                    <span>Estamos para acompañarte.</span>
-                    <a href="mailto:hola@magistral.com.ar">Contactar soporte <span aria-hidden="true">→</span></a>
-                </div>
-                <button class="profile-button" type="button">
-                    <span class="profile-avatar">LF</span>
-                    <span class="profile-copy"><strong>Lucía Fernández</strong><small>Administradora</small></span>
-                    <span class="profile-dots" aria-hidden="true">•••</span>
-                </button>
-            </div>
-        </aside>
-
-        <main class="main-content">
-            <header class="page-header">
-                <div>
-                    <p class="eyebrow">HOY, {{ today|date:"j \\d\\e F"|upper }}</p>
-                    <h1>Mensajes</h1>
-                    <p class="page-subtitle">Mantené cada conversación cerca y a tus clientes bien atendidos.</p>
-                </div>
-                <div class="availability-pill"><span></span> Disponible</div>
-            </header>
-
-            <section class="summary-grid" aria-label="Resumen de mensajes">
-                <article class="summary-card">
-                    <span class="summary-icon summary-icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.7-3.4A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
-                    <span class="summary-copy"><span>Conversaciones abiertas</span><strong>{{ open_count }}</strong></span>
-                </article>
-                <article class="summary-card">
-                    <span class="summary-icon summary-icon-amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    <span class="summary-copy"><span>Pendientes de respuesta</span><strong>{{ pending_count }}</strong></span><span class="summary-note summary-note-warm">Para hoy</span>
-                </article>
-                <article class="summary-card summary-card-response">
-                    <span class="summary-icon summary-icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    <span class="summary-copy"><span>Consultas recibidas hoy</span><strong>{{ today_count }}</strong></span><span class="summary-note">Desde medianoche</span>
-                </article>
-            </section>
-
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-5 pb-12 flex flex-col gap-4">
+            <h1 class="text-3xl font-bold tracking-tight leading-tight">Solicitudes y chats</h1>
             {% include 'chats/_inbox_content.html' %}
-            <p class="demo-disclaimer">Las consultas y respuestas se guardan en la base de datos.</p>
-        </main>
-    </div>
+        </div>
+    </main>
+    <script>
+        function pinMessages() {
+            const messages = document.querySelector('[data-messages]')
+            if (messages) messages.scrollTop = messages.scrollHeight
+        }
+        pinMessages()
+        document.body.addEventListener('htmx:afterSwap', () => {
+            pinMessages()
+            document.querySelector('[data-chat-form] textarea')?.focus()
+        })
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.target.tagName !== 'TEXTAREA') return
+            const form = event.target.closest('[data-chat-form]')
+            if (!form) return
+            event.preventDefault()
+            form.requestSubmit()
+        })
+    </script>
 {% endblock %}
