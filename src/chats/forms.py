@@ -21,8 +21,8 @@ class MessageForm(forms.Form):
         strip=True,
         widget=forms.Textarea(
             attrs={
-                'rows': 1,
-                'placeholder': 'Escribí un mensaje...',
+                'rows': 2,
+                'placeholder': 'Escribí un mensaje al cliente…',
                 'maxlength': 2000,
             },
         ),

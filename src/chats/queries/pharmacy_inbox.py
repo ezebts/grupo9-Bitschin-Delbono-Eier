@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 
 from django.db.models import OuterRef, Subquery
-from django.utils import timezone
 
 from chats.models import Conversation, Message
-from shared.values import PhoneNumber
 
 
 @dataclass(frozen=True)
@@ -29,11 +27,9 @@ class ListedConversation:
 @dataclass(frozen=True)
 class OpenConversation:
     id: int
+    title: str
     customer_name: str
-    customer_email: str
-    customer_phone: PhoneNumber | None
-    initials: str
-    created_at: datetime
+    waiting_for_pharmacy: bool
     messages: tuple[ChatMessage, ...]
 
 
@@ -42,14 +38,12 @@ class PharmacyInbox:
     conversations: tuple[ListedConversation, ...]
     open_count: int
     pending_count: int
-    today_count: int
-    today: date
 
 
 def get_pharmacy_inbox(user_id, search='', *, unread_only=False) -> PharmacyInbox:
     """Lists the conversations that belong to a pharmacy."""
 
-    found = Conversation.objects.with_customer().for_pharmacy(user_id)
+    found = Conversation.objects.for_pharmacy(user_id)
 
     if search:
         found = found.search(search)
@@ -106,15 +100,12 @@ def get_pharmacy_inbox(user_id, search='', *, unread_only=False) -> PharmacyInbo
             )
         )
 
-    today = timezone.localdate()
     owned = Conversation.objects.for_pharmacy(user_id)
 
     return PharmacyInbox(
         conversations=tuple(listed),
         open_count=owned.count(),
         pending_count=owned.pending().count(),
-        today_count=owned.filter(created_at__date=today).count(),
-        today=today,
     )
 
 
@@ -128,23 +119,30 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
         .get(pk=conversation_id)
     )
 
-    name = conversation.customer.get_full_name() or conversation.customer.email
+    messages = tuple(
+        ChatMessage(
+            body=message.body,
+            created_at=message.created_at,
+            is_customer=message.is_customer,
+            is_pharmacy=message.is_pharmacy,
+            is_system=message.is_system,
+        )
+        for message in conversation.messages.all()
+    )
+
+    latest_conversation_sender = (
+        conversation.messages.exclude(sender=Message.Sender.SYSTEM)
+        .order_by('-created_at', '-pk')
+        .values_list('sender', flat=True)
+        .first()
+    )
 
     return OpenConversation(
         id=conversation.pk,
-        customer_name=name,
-        customer_email=conversation.customer.email,
-        customer_phone=conversation.customer.client_account.phone,
-        initials=conversation.customer.get_initials(),
-        created_at=conversation.created_at,
-        messages=tuple(
-            ChatMessage(
-                body=message.body,
-                created_at=message.created_at,
-                is_customer=message.is_customer,
-                is_pharmacy=message.is_pharmacy,
-                is_system=message.is_system,
-            )
-            for message in conversation.messages.all()
+        title=conversation.title,
+        customer_name=(
+            conversation.customer.get_full_name() or conversation.customer.email
         ),
+        waiting_for_pharmacy=latest_conversation_sender != Message.Sender.PHARMACY,
+        messages=messages,
     )

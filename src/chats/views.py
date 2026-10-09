@@ -22,14 +22,9 @@ class PharmacyInboxMixin(RoleRequiredMixin):
         return user.is_pharmacy
 
     def conversation_id(self):
-        return (
-            self.kwargs.get('conversation_id')
-            or self.request.GET.get('conversation_id')
-            or self.request.GET.get('selected_id')
+        return self.kwargs.get('conversation_id') or self.request.GET.get(
+            'conversation_id'
         )
-
-    def show_chat_column(self):
-        return True
 
     def get_template_names(self):
         if self.request.htmx:
@@ -69,23 +64,12 @@ class PharmacyInboxMixin(RoleRequiredMixin):
             form=context.get('form', MessageForm()),
             open_count=inbox.open_count,
             pending_count=inbox.pending_count,
-            today_count=inbox.today_count,
-            today=inbox.today,
-            show_chat=self.show_chat_column(),
         )
         return context
 
 
 class PharmacyInboxView(PharmacyInboxMixin, TemplateView):
-    def show_chat_column(self):
-        return self.conversation_id() is not None
-
-
-class ConversationView(PharmacyInboxMixin, TemplateView):
-    def get(self, request, *args, **kwargs):
-        if not request.htmx:
-            return redirect('chats:inbox')
-        return super().get(request, *args, **kwargs)
+    pass
 
 
 class SendMessageView(PharmacyInboxMixin, FormView):
