@@ -1,0 +1,65 @@
+{% load widget_tweaks %}
+<div id="customer-chat" class="contents">
+    <section aria-labelledby="farm-titulo" class="flex-1 min-w-64 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 overflow-y-auto bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
+        <h2 id="farm-titulo" class="px-1 pt-1 pb-2 text-[15px] font-bold">Farmacias contactadas · {{ conversations|length }}</h2>
+        {% for conversation in conversations %}
+            <a class="flex flex-col gap-1.5 w-full p-3.5 rounded-xl text-left {% if selected.id == conversation.id %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:customer_inbox' %}?conversation_id={{ conversation.id }}" {% if selected.id == conversation.id %}aria-current="true"{% endif %}>
+                <span class="font-bold text-[15px]">{{ conversation.title }}</span>
+                {% if conversation.waiting_for_pharmacy %}
+                    <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#FCEFD9] text-[#8A4B00]">Sin respuesta todavía</span>
+                {% else %}
+                    <span class="text-sm text-[#3F4B47]">Presupuesto <strong class="text-base-content" aria-label="Precio. Sale del presupuesto.">—</strong></span>
+                {% endif %}
+                <span class="text-[13px] text-[#51605A]">
+                    <time>{{ conversation.updated_at|date:"d/m H:i" }}</time>
+                    {% if conversation.last_message %}· «{{ conversation.last_message.body|truncatechars:40 }}»{% endif %}
+                </span>
+            </a>
+        {% empty %}
+            <p class="px-1 text-sm text-[#51605A]">Todavía no tenés conversaciones. Cuando hables con una farmacia por un pedido, el chat va a aparecer acá.</p>
+        {% endfor %}
+    </section>
+
+    <section class="flex-[2_1_36rem] min-w-0 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 bg-base-100 border border-base-300 rounded-2xl flex flex-col overflow-hidden" aria-label="Conversación">
+        {% if selected %}
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 border-b border-base-300">
+                <div class="flex items-center gap-3">
+                    <span aria-hidden="true" class="w-10 h-10 rounded-xl bg-[#E2F0EA] text-[#0A5141] inline-flex items-center justify-center font-bold text-sm">{{ selected.title|slice:":1" }}</span>
+                    <span class="flex flex-col gap-0.5">
+                        <span class="font-bold text-base">{{ selected.title }}</span>
+                        <span class="text-[13px] text-[#51605A]" aria-label="Dirección, distancia y horario. Salen de la farmacia.">— · — · —</span>
+                    </span>
+                </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto p-5 bg-[#F7F9F7] flex flex-col gap-4" data-messages aria-live="polite">
+                {% for message in selected.messages %}
+                    {% if message.is_system %}
+                        <p class="self-center inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECEFED] text-[13px] text-[#3F4B47]">{{ message.body }} · <time>{{ message.created_at|date:"d/m H:i" }}</time></p>
+                    {% else %}
+                        <div class="flex flex-col gap-1 {% if message.is_customer %}items-end{% else %}items-start{% endif %}">
+                            <span class="text-xs text-[#51605A]">{% if message.is_customer %}Vos{% else %}{{ selected.title }}{% endif %} · <time>{{ message.created_at|date:"d/m H:i" }}</time></span>
+                            <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_customer %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}">{{ message.body|linebreaksbr }}</p>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <p class="text-sm text-[#51605A]">Todavía no hay mensajes en esta conversación.</p>
+                {% endfor %}
+            </div>
+            <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:customer_reply' selected.id %}" data-chat-form hx-post="{% url 'chats:customer_reply' selected.id %}" hx-target="#customer-chat" hx-swap="outerHTML">
+                {% csrf_token %}
+                <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para la farmacia</label>
+                <div class="flex gap-2 items-end">
+                    {% render_field form.message class="textarea w-full min-w-0 flex-1 min-h-12 max-h-24 resize-none overflow-y-auto text-[15px] leading-normal" %}
+                    <button class="btn btn-primary btn-square shrink-0" type="submit" aria-label="Enviar mensaje">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                    </button>
+                </div>
+                {% for error in form.message.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+            </form>
+        {% else %}
+            <div class="flex-1 grid place-items-center p-8 text-center">
+                <p class="text-sm text-[#51605A]">Cuando hables con una farmacia por un pedido, el chat va a aparecer acá.</p>
+            </div>
+        {% endif %}
+    </section>
+</div>

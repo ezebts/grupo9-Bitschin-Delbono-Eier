@@ -25,8 +25,8 @@ def get_account_client_profile(user_id):
     return ClientAccountProfile(
         email=user.email,
         google_linked=user.socialaccount_set.filter(provider='google').exists(),
-        first_name=user.client_account.first_name,
-        last_name=user.client_account.last_name,
+        first_name=user.first_name,
+        last_name=user.last_name,
         phone=user.client_account.phone,
         health_insurance_number=user.client_account.health_insurance_number,
         location=user.client_account.location,

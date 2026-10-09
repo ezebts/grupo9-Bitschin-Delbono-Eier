@@ -40,11 +40,7 @@ def client_account(db):  # noqa: ARG001
     )
     user.set_unusable_password()
     user.save()
-    return ClientAccount.objects.create(
-        user=user,
-        first_name=user.first_name,
-        last_name=user.last_name,
-    )
+    return ClientAccount.objects.create(user=user)
 
 
 def test_client_updates_profile(client_account, client_profile_params):
@@ -54,8 +50,6 @@ def test_client_updates_profile(client_account, client_profile_params):
     user = client_account.user
     user.refresh_from_db()
 
-    assert client_account.first_name == client_profile_params.first_name
-    assert client_account.last_name == client_profile_params.last_name
     assert client_account.phone == client_profile_params.phone
     assert (
         client_account.health_insurance_number
@@ -69,6 +63,7 @@ def test_client_updates_profile(client_account, client_profile_params):
 
     assert user.first_name == client_profile_params.first_name
     assert user.last_name == client_profile_params.last_name
+    assert user.get_initials() == 'LF'
 
 
 def test_client_clears_health_insurance(client_account, client_profile_params):

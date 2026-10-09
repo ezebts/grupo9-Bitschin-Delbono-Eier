@@ -21,11 +21,10 @@ def user(db):  # noqa: ARG001
 
 
 def test_client_profile_includes_the_account_and_a_google_link(user):
-    ClientAccount.objects.create(
-        user=user,
-        first_name='Ana',
-        last_name='Pérez',
-    )
+    user.first_name = 'Ana'
+    user.last_name = 'Pérez'
+    user.save(update_fields=['first_name', 'last_name'])
+    ClientAccount.objects.create(user=user)
     SocialAccount.objects.create(user=user, provider='google', uid='google-ana')
 
     profile = get_account_client_profile(user.id)

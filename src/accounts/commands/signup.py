@@ -10,11 +10,7 @@ def signup(user: User, role: str):
     user.save(update_fields=['role'])
 
     if role == User.Role.CUSTOMER:
-        ClientAccount.objects.create(
-            user=user,
-            first_name=user.first_name,
-            last_name=user.last_name,
-        )
+        ClientAccount.objects.create(user=user)
         return
 
     PharmacyAccount.objects.create(user=user)

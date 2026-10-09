@@ -21,21 +21,17 @@
             <div class="conversation-list">
                 {% for conversation in conversations %}
                     <button type="button" class="conversation-row{% if selected.id == conversation.id %} selected{% endif %}" hx-get="{% url 'chats:conversation' conversation.id %}?search={{ search|urlencode }}&amp;filter={{ filter }}" hx-include="#conversation-filters" hx-target="#inbox-content" hx-swap="outerHTML" aria-pressed="{% if selected.id == conversation.id %}true{% else %}false{% endif %}">
-                        <span class="contact-avatar avatar-{{ conversation.color }}">{{ conversation.initials|default:"?" }}</span>
+                        <span class="contact-avatar">{{ conversation.title|slice:":1"|default:"?" }}</span>
                         <span class="conversation-details">
-                            <span class="conversation-topline"><strong>{{ conversation.customer_name }}</strong><time>{{ conversation.updated_at|date:"H:i" }}</time></span>
+                            <span class="conversation-topline"><strong>{{ conversation.title }}</strong><time>{{ conversation.updated_at|date:"H:i" }}</time></span>
                             <span class="conversation-preview">{% if conversation.last_message %}{{ conversation.last_message.body }}{% else %}Sin mensajes{% endif %}</span>
-                            <span class="conversation-tags">
-                        <span class="tag tag-{% if conversation.waiting_for_pharmacy %}amber{% else %}green{% endif %}">{{ conversation.subject|truncatechars:24 }}</span>
-                        {% if conversation.waiting_for_pharmacy %}<span class="unread-dot" aria-label="Pendiente de respuesta"></span>{% endif %}
-                            </span>
+                            {% if conversation.waiting_for_pharmacy %}<span class="unread-dot" aria-label="Pendiente de respuesta"></span>{% endif %}
                         </span>
                     </button>
                 {% empty %}
                     <p class="no-conversations">No encontramos conversaciones con ese criterio.</p>
                 {% endfor %}
             </div>
-            <a class="load-more new-inquiry-link" href="{% url 'chats:new_inquiry' %}">Nueva consulta <span aria-hidden="true">＋</span></a>
         </div>
 
         {% if selected %}
@@ -44,7 +40,7 @@
                 <header class="chat-header">
                     <button class="mobile-back" type="submit" form="conversation-filters" name="filter" value="{{ filter }}" aria-label="Volver a conversaciones">‹</button>
                     <div class="chat-contact">
-                        <span class="contact-avatar contact-avatar-large avatar-{{ selected.color }}">{{ selected.initials|default:"?" }}</span>
+                        <span class="contact-avatar contact-avatar-large">{{ selected.initials|default:"?" }}</span>
                         <div><h2>{{ selected.customer_name }}</h2><span class="contact-presence"><i></i> Cliente</span></div>
                     </div>
                     <div class="chat-actions">
@@ -56,19 +52,23 @@
 
                 <div class="chat-context">
                     <span class="context-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m4 12 4.5 4.5L20 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    <span><strong>{{ selected.subject }}</strong><small>Consulta recibida {{ selected.created_at|date:"d/m/Y" }}</small></span>
+                    <span><strong>Conversación</strong><small>Recibida {{ selected.created_at|date:"d/m/Y" }}</small></span>
                     <button type="button">Ver detalle <span aria-hidden="true">↗</span></button>
                 </div>
 
                 <div class="message-history" aria-live="polite">
                     <div class="date-divider"><span>{{ selected.created_at|date:"d/m/Y" }}</span></div>
-                    {% for message in selected.messages.all %}
-                        <div class="message-row{% if message.sender == 'pharmacy' %} message-outgoing{% else %} message-incoming{% endif %}">
-                            <div class="message-bubble">
-                                <p>{{ message.body }}</p>
-                                <span class="message-meta"><time>{{ message.created_at|date:"H:i" }}</time>{% if message.sender == 'pharmacy' %}<span aria-label="Enviado">✓✓</span>{% endif %}</span>
+                    {% for message in selected.messages %}
+                        {% if message.is_system %}
+                            <p class="date-divider"><span>{{ message.body }} · {{ message.created_at|date:"d/m H:i" }}</span></p>
+                        {% else %}
+                            <div class="message-row{% if message.is_customer %} message-incoming{% else %} message-outgoing{% endif %}">
+                                <div class="message-bubble">
+                                    <p>{{ message.body }}</p>
+                                    <span class="message-meta"><time>{{ message.created_at|date:"H:i" }}</time>{% if message.is_pharmacy %}<span aria-label="Enviado">✓✓</span>{% endif %}</span>
+                                </div>
                             </div>
-                        </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
 
@@ -95,18 +95,13 @@
             <div class="customer-panel">
                 <div class="customer-panel-heading"><h2>Datos del cliente</h2><button class="icon-button" type="button" aria-label="Más opciones">•••</button></div>
                 <div class="customer-summary">
-                    <span class="contact-avatar customer-avatar avatar-{{ selected.color }}">{{ selected.initials|default:"?" }}</span>
+                    <span class="contact-avatar customer-avatar">{{ selected.initials|default:"?" }}</span>
                     <strong>{{ selected.customer_name }}</strong>
                     <span>Consulta recibida {{ selected.created_at|date:"d/m/Y" }}</span>
                 </div>
                 <div class="customer-fields">
                     <div><span>Correo electrónico</span><strong>{{ selected.customer_email }}</strong></div>
-                    <div><span>Teléfono</span><strong>{{ selected.customer_phone|default:"No informado" }}</strong></div>
-                    <div><span>Consulta</span><strong>{{ selected.subject }}</strong></div>
-                </div>
-                <div class="customer-note">
-                    <div><strong>Asunto de la consulta</strong></div>
-                    <p>{{ selected.subject }}</p>
+                    <div><span>Teléfono</span><strong>{{ selected.customer_phone.number|default:"No informado" }}</strong></div>
                 </div>
             </div>
         </aside>
@@ -115,8 +110,7 @@
             <div class="empty-chat-message">
                 <span class="summary-icon summary-icon-green" aria-hidden="true">✉</span>
                 <h2>Todavía no hay consultas</h2>
-                <p>Cuando un cliente envíe una consulta, la conversación va a aparecer acá.</p>
-                <a href="{% url 'chats:new_inquiry' %}">Crear una consulta de prueba</a>
+                <p>Cuando un cliente escriba por un pedido, la conversación va a aparecer acá.</p>
             </div>
         </div>
         {% endif %}

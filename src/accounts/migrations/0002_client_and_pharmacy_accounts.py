@@ -14,13 +14,7 @@ def create_missing_accounts(apps, schema_editor):
         if user.role == PHARMACY:
             pharmacy_account_model.objects.get_or_create(user=user)
             continue
-        client_account_model.objects.get_or_create(
-            user=user,
-            defaults={
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-            },
-        )
+        client_account_model.objects.get_or_create(user=user)
 
 
 class Migration(migrations.Migration):
@@ -41,8 +35,6 @@ class Migration(migrations.Migration):
                         verbose_name='ID',
                     ),
                 ),
-                ('first_name', models.CharField(max_length=150)),
-                ('last_name', models.CharField(max_length=150)),
                 (
                     '_phone',
                     models.CharField(blank=True, db_column='phone', max_length=20),

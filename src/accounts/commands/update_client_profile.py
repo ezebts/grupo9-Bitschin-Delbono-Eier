@@ -27,8 +27,6 @@ def update_client_profile(user_id, params: UpdateClientProfileParams):
     user.last_name = params.last_name
 
     user.client_account.update_personal_details(
-        params.first_name,
-        params.last_name,
         params.phone,
         params.health_insurance_number,
     )

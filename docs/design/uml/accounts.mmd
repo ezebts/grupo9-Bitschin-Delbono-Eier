@@ -20,13 +20,14 @@ classDiagram
 
     class User {
         email: str
-    }
-    class ClientAccount {
         firstName: str
         lastName: str
+        +getInitials() str
+    }
+    class ClientAccount {
         healthInsuranceNumber: str
         searchRadius: SearchRadius
-        +updatePersonalDetails(firstName, lastName, phone, healthInsuranceNumber)
+        +updatePersonalDetails(phone, healthInsuranceNumber)
         +updateSearchPreferences(location, searchRadius)
         +updateMailPreferences(mailPreferences)
     }

@@ -8,7 +8,7 @@
                 <span class="px-2 py-0.5 rounded-md bg-[#2C3B36] text-xs font-bold tracking-widest uppercase text-[#BFE3D5]">Farmacias</span>
             </a>
             <nav aria-label="Menú de la farmacia" class="flex flex-wrap gap-1 flex-1">
-                <a href="{% url 'home' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if request.resolver_match.url_name == 'home' %}bg-[#2C3B36] text-white{% else %}text-[#D5DDD9]{% endif %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Solicitudes</a>
+                <a href="{% url 'chats:inbox' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'inbox' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'conversation' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'send_message' %}bg-[#2C3B36] text-white{% else %}text-[#D5DDD9]{% endif %}" {% if request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'inbox' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'conversation' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'send_message' %}aria-current="page"{% endif %}>Solicitudes</a>
             </nav>
             <a href="{% url 'profile' %}" class="inline-flex items-center gap-2.5 min-h-11 pl-1 pr-3.5 rounded-full font-semibold {% if request.resolver_match.url_name == 'profile' %}bg-[#E2F0EA] text-[#0A5141]{% endif %}" {% if request.resolver_match.url_name == 'profile' %}aria-current="page"{% endif %}>
                 <span aria-hidden="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#BFE3D5] text-[#0A5141] text-sm font-bold">{{ user.pharmacy_account.trade_name|default:"F"|slice:":1"|upper }}</span>
@@ -28,12 +28,12 @@
                     {% heroicon_outline "plus" size=18 %}
                     Nueva solicitud
                 </a>
-                <a href="{% url 'home' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if request.resolver_match.url_name == 'home' %}bg-base-200{% else %}text-[#3F4B47]{% endif %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Mis pedidos</a>
+                <a href="{% url 'chats:customer_inbox' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'customer_inbox' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'customer_reply' %}bg-base-200{% else %}text-[#3F4B47]{% endif %}" {% if request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'customer_inbox' or request.resolver_match.namespace == 'chats' and request.resolver_match.url_name == 'customer_reply' %}aria-current="page"{% endif %}>Mis pedidos</a>
                 <a href="{% url 'home' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold text-[#3F4B47]">Pedido en curso</a>
             </nav>
             <a href="{% url 'profile' %}" class="inline-flex items-center gap-2.5 min-h-11 pl-1 pr-3.5 rounded-full font-semibold {% if request.resolver_match.url_name == 'profile' %}bg-[#E2F0EA] text-[#0A5141]{% else %}text-[#3F4B47]{% endif %}" {% if request.resolver_match.url_name == 'profile' %}aria-current="page"{% endif %}>
-                <span aria-hidden="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#12201B] text-white text-sm font-bold">{{ user.client_account.first_name|default:"C"|slice:":1"|upper }}</span>
-                {{ user.client_account.first_name|default:"Tu perfil" }}
+                <span aria-hidden="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#12201B] text-white text-sm font-bold">{{ user.get_initials|default:"C" }}</span>
+                {{ user.first_name|default:"Tu perfil" }}
             </a>
         </div>
     </header>

@@ -26,9 +26,11 @@ def test_email_signup_opens_an_account_for_the_selected_role(client, role):
 
     user = User.objects.get(email='ana@example.com')
     assert user.role == role
+    assert user.first_name == 'Ana'
+    assert user.last_name == 'Pérez'
+    assert user.get_initials() == 'AP'
     if role == User.Role.CUSTOMER:
-        assert user.client_account.first_name == 'Ana'
-        assert user.client_account.last_name == 'Pérez'
+        assert user.client_account.pk
         assert not PharmacyAccount.objects.exists()
         return
     assert user.pharmacy_account.pk

@@ -39,10 +39,6 @@ class ClientAccount(models.Model):
         related_name='client_account',
     )
 
-    first_name = models.CharField(max_length=150)
-
-    last_name = models.CharField(max_length=150)
-
     _phone = models.CharField(max_length=20, blank=True, db_column='phone')
 
     health_insurance_number = models.CharField(max_length=40, blank=True)
@@ -58,7 +54,7 @@ class ClientAccount(models.Model):
     )
 
     def __str__(self):
-        return f'{self.first_name} {self.last_name}'
+        return self.user.get_full_name() or self.user.email
 
     @property
     def phone(self):
@@ -74,15 +70,7 @@ class ClientAccount(models.Model):
     def mail_preferences(self) -> MailPreferences:
         return from_dict(MailPreferences, self._mail_preferences)
 
-    def update_personal_details(
-        self,
-        first_name,
-        last_name,
-        phone,
-        health_insurance_number,
-    ):
-        self.first_name = first_name
-        self.last_name = last_name
+    def update_personal_details(self, phone, health_insurance_number):
         self._phone = phone.number
         self.health_insurance_number = health_insurance_number
 
