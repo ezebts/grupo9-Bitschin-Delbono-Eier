@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head_title %}Mis consultas | Magistral{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'chats/css/inbox.css' %}">
+{% endblock %}
+
+{% block content %}
+    <main class="customer-inbox-page">
+        <header class="customer-inbox-header">
+            <a class="brand" href="{% url 'chats:new_inquiry' %}">
+                <span class="brand-mark" aria-hidden="true">✚</span><span>magistral</span>
+            </a>
+            <nav class="customer-nav" aria-label="Menú del cliente">
+                <a class="selected" href="{% url 'chats:customer_inbox' %}">Mis consultas</a>
+                <a href="{% url 'chats:new_inquiry' %}">Nueva consulta</a>
+            </nav>
+            <div class="customer-account">
+                <span>{{ request.user.get_full_name|default:request.user.email }}</span>
+                <form method="post" action="{% url 'account_logout' %}">
+                    {% csrf_token %}
+                    <button type="submit">Cerrar sesión</button>
+                </form>
+            </div>
+        </header>
+        <section class="customer-inbox-main">
+            <div class="customer-page-title">
+                <div>
+                    <p class="eyebrow">TU ESPACIO</p>
+                    <h1>Mis consultas</h1>
+                    <p class="page-subtitle">Seguí tus conversaciones con la farmacia desde acá.</p>
+                </div>
+                <a class="send-button" href="{% url 'chats:new_inquiry' %}">Nueva consulta <span aria-hidden="true">＋</span></a>
+            </div>
+
+            <section class="customer-conversations">
+                <div class="customer-conversation-list">
+                    <h2>Conversaciones</h2>
+                    {% for conversation in conversations %}
+                        <a class="customer-conversation-link{% if selected.pk == conversation.pk %} selected{% endif %}" href="{% url 'chats:customer_inbox' %}?conversation_id={{ conversation.pk }}">
+                            <span class="customer-conversation-copy">
+                                <strong>{{ conversation.subject }}</strong>
+                                <span>{% if conversation.last_message %}{{ conversation.last_message.body|truncatechars:65 }}{% else %}Sin mensajes{% endif %}</span>
+                            </span>
+                            <span class="customer-conversation-meta">
+                                <time>{{ conversation.updated_at|date:"d/m H:i" }}</time>
+                                {% if conversation.waiting_for_pharmacy %}<span class="tag tag-amber">Esperando respuesta</span>{% else %}<span class="tag tag-green">Respondida</span>{% endif %}
+                            </span>
+                        </a>
+                    {% empty %}
+                        <div class="customer-no-conversations">
+                            <h2>Todavía no tenés consultas</h2>
+                            <p>Cuando le escribas a la farmacia, tu conversación va a aparecer acá.</p>
+                            <a href="{% url 'chats:new_inquiry' %}">Enviar una consulta</a>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="customer-chat-panel">
+                    {% if selected %}
+                        <header class="customer-chat-heading">
+                            <span class="brand-mark" aria-hidden="true">✚</span>
+                            <div>
+                                <h2>{{ selected.subject }}</h2>
+                                <span>Farmacia · Actualizada {{ selected.updated_at|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            {% if selected.waiting_for_pharmacy %}<span class="tag tag-amber">Esperando respuesta</span>{% else %}<span class="tag tag-green">Respondida</span>{% endif %}
+                        </header>
+                        <div class="customer-message-list" aria-live="polite">
+                            {% for message in selected.messages.all %}
+                                <div class="message-row{% if message.sender == 'customer' %} message-outgoing{% else %} message-incoming{% endif %}">
+                                    <div class="message-bubble">
+                                        <span class="customer-message-sender">{% if message.sender == 'customer' %}Vos{% else %}Farmacia{% endif %}</span>
+                                        <p>{{ message.body }}</p>
+                                        <span class="message-meta"><time>{{ message.created_at|date:"d/m/Y H:i" }}</time></span>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <p class="no-conversations">Todavía no hay mensajes en esta conversación.</p>
+                            {% endfor %}
+                        </div>
+                        <form class="customer-reply-form" method="post" action="{% url 'chats:customer_reply' selected.pk %}">
+                            {% csrf_token %}
+                            <label for="{{ form.message.id_for_label }}">Responder</label>
+                            {{ form.message }}
+                            {% for error in form.message.errors %}<span class="form-error">{{ error }}</span>{% endfor %}
+                            <button class="send-button" type="submit">Enviar respuesta <span aria-hidden="true">→</span></button>
+                        </form>
+                    {% else %}
+                        <div class="customer-no-conversations">
+                            <h2>Elegí una conversación</h2>
+                            <p>Seleccioná una consulta para ver las respuestas y continuar el intercambio.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+        </section>
+    </main>
+{% endblock %}
