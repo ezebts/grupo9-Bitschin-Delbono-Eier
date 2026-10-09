@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'shared',
     'chats',
+    'orders',
 ]
 
 MIDDLEWARE = [
@@ -140,6 +141,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 TAILWIND_CLI_USE_DAISY_UI = True
+TAILWIND_CLI_SRC_CSS = 'shared/source.css'
 TAILWIND_CLI_DIST_CSS = 'shared/css/tailwind.css'
 
 STATIC_URL = '/static/'
@@ -159,6 +161,12 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
 }
+
+
+# Places (OpenStreetMap data through Photon)
+
+PHOTON_URL = config('PHOTON_URL', default='https://photon.komoot.io')
+PHOTON_USER_AGENT = 'Magistral/0.1 (grupo9-Bitschin-Delbono-Eier)'
 
 
 # Background Tasks

@@ -34,8 +34,8 @@
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Datos personales</h2>
                         <div class="grid sm:grid-cols-2 gap-4">
-                            {% include "accounts/_field.html" with field=form.first_name %}
-                            {% include "accounts/_field.html" with field=form.last_name %}
+                            {% include "shared/_field.html" with field=form.first_name %}
+                            {% include "shared/_field.html" with field=form.last_name %}
                             <fieldset class="fieldset">
                                 <span class="fieldset-legend">Email</span>
                                 <p class="min-h-12 px-3.5 py-3 rounded-lg bg-base-200 text-base-content/80">{{ profile.email }}</p>
@@ -43,8 +43,8 @@
                                     <p class="label whitespace-normal">Viene de tu cuenta de Google.</p>
                                 {% endif %}
                             </fieldset>
-                            {% include "accounts/_field.html" with field=form.phone %}
-                            {% include "accounts/_field.html" with field=form.health_insurance_number %}
+                            {% include "shared/_field.html" with field=form.phone %}
+                            {% include "shared/_field.html" with field=form.health_insurance_number %}
                         </div>
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
@@ -52,11 +52,11 @@
                             <h2 class="text-2xl font-semibold">Ubicación y entrega</h2>
                             <p class="text-base-content/70">Centra el mapa al buscar farmacias y se comparte solo con la farmacia que aceptes, si pedís envío.</p>
                         </div>
-                        {% include "accounts/_field.html" with field=form.address %}
+                        {% include "shared/_field.html" with field=form.address %}
                         <div class="grid sm:grid-cols-3 gap-4">
-                            {% include "accounts/_field.html" with field=form.locality %}
-                            {% include "accounts/_field.html" with field=form.postal_code %}
-                            {% include "accounts/_field.html" with field=form.search_radius %}
+                            {% include "shared/_field.html" with field=form.locality %}
+                            {% include "shared/_field.html" with field=form.postal_code %}
+                            {% include "shared/_field.html" with field=form.search_radius %}
                         </div>
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-3">

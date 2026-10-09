@@ -17,8 +17,8 @@
         {% for error in form.non_field_errors %}
             <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
         {% endfor %}
-        {% include "accounts/_field.html" with field=form.login %}
-        {% include "accounts/_field.html" with field=form.password %}
+        {% include "shared/_field.html" with field=form.login %}
+        {% include "shared/_field.html" with field=form.password %}
         <label class="label gap-2 py-2">
             <input type="checkbox" name="{{ form.remember.html_name }}" class="checkbox checkbox-sm">
             {{ form.remember.label }}

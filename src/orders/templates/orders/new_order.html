@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load heroicons widget_tweaks %}
+
+{% block head_title %}Nueva solicitud{% endblock head_title %}
+
+{% block content %}
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-8 space-y-7">
+            <div class="space-y-4">
+                <h1 class="text-4xl font-bold tracking-tight">Nueva solicitud de presupuesto</h1>
+                <ol aria-label="Pasos de la solicitud" class="flex flex-wrap gap-x-7 gap-y-2">
+                    <li aria-current="step" class="flex items-center gap-2.5 font-bold text-[#0A5141]">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-content text-sm">1</span>
+                        Tu preparación
+                    </li>
+                    <li class="flex items-center gap-2.5 font-semibold text-base-content/70">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full border-[1.5px] border-[#B7C4BD] text-sm">2</span>
+                        Elegir farmacias
+                    </li>
+                    <li class="flex items-center gap-2.5 font-semibold text-base-content/70">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full border-[1.5px] border-[#B7C4BD] text-sm">3</span>
+                        Enviar solicitud
+                    </li>
+                </ol>
+            </div>
+            {% include "shared/_messages.html" %}
+            <div class="flex flex-wrap gap-6 items-start">
+                <form method="post" enctype="multipart/form-data" novalidate aria-label="Datos de la preparación" class="flex-[2_1_35rem] bg-base-100 border border-base-300 rounded-3xl p-8 space-y-6">
+                    {% csrf_token %}
+                    {% for error in form.non_field_errors %}
+                        <p class="text-error text-sm">{{ error }}</p>
+                    {% endfor %}
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <fieldset class="fieldset">
+                            <label class="fieldset-legend" for="{{ form.preparation_type.id_for_label }}">{{ form.preparation_type.label }}</label>
+                            {% render_field form.preparation_type class="select w-full" %}
+                            {% for error in form.preparation_type.errors %}
+                                <p class="text-error text-sm">{{ error }}</p>
+                            {% endfor %}
+                        </fieldset>
+                        {% include "shared/_field.html" with field=form.presentation %}
+                    </div>
+                    <fieldset class="fieldset">
+                        <label class="fieldset-legend" for="{{ form.formula.id_for_label }}">{{ form.formula.label }}</label>
+                        {% render_field form.formula class="textarea w-full" %}
+                        <p class="label whitespace-normal">{{ form.formula.help_text }}</p>
+                        {% for error in form.formula.errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </fieldset>
+                    <fieldset class="fieldset gap-2.5" x-data="prescriptionFiles">
+                        <legend class="fieldset-legend">
+                            {{ form.prescription_files.label }}
+                            <span class="font-normal text-base-content/70">(opcional)</span>
+                        </legend>
+                        <label class="flex flex-col items-center gap-2 px-5 py-7 border-2 border-dashed rounded-2xl text-center cursor-pointer focus-within:outline-2 focus-within:outline-primary"
+                               x-bind:class="dragging ? 'border-primary bg-primary/5' : 'border-[#B7C4BD] bg-[#F8FAF8]'"
+                               x-on:change="add($event.target.files)"
+                               x-on:dragover.prevent="dragging = true"
+                               x-on:dragleave="dragging = false"
+                               x-on:drop.prevent="dragging = false; add($event.dataTransfer.files)">
+                            {% render_field form.prescription_files class="sr-only" %}
+                            <span class="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#E2F0EA] text-[#0A5141]">{% heroicon_outline "arrow-up-tray" size=22 %}</span>
+                            <span class="font-semibold">Arrastrá la receta acá o <span class="link link-primary">elegí un archivo</span></span>
+                            <span class="text-sm text-base-content/70">PDF, JPG o PNG · hasta 10 MB · podés subir más de uno</span>
+                        </label>
+                        <template x-for="(file, index) in files" x-bind:key="index">
+                            <div class="flex items-center gap-3 px-3 py-2.5 border border-base-300 rounded-xl">
+                                <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-base-200 text-[#3F4B47] shrink-0">{% heroicon_outline "document" size=20 %}</span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="block font-semibold truncate" x-text="file.name"></span>
+                                    <span class="block text-sm text-base-content/70" x-text="size(file)"></span>
+                                </span>
+                                <button type="button" class="btn btn-ghost btn-square" x-bind:aria-label="`Quitar ${file.name}`" x-on:click="remove(index)">
+                                    {% heroicon_outline "x-mark" size=20 %}
+                                </button>
+                            </div>
+                        </template>
+                        <p class="label whitespace-normal">{{ form.prescription_files.help_text }}</p>
+                        {% for error in form.prescription_files.errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </fieldset>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        {% include "shared/_choices.html" with field=form.urgency pills=True %}
+                        {% include "shared/_choices.html" with field=form.delivery_preferences pills=True %}
+                    </div>
+                    <fieldset class="fieldset"
+                              x-data="placeSearch"
+                              data-url="{% url 'orders:places' %}"
+                              x-on:keydown.escape="close()"
+                              x-on:click.outside="close()">
+                        <label class="fieldset-legend" for="{{ form.search_area.id_for_label }}">{{ form.search_area.label }}</label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="relative flex-[1_1_18rem]">
+                                <label class="input w-full">
+                                    {% heroicon_outline "map-pin" size=20 class="opacity-70" %}
+                                    <input type="text"
+                                           name="{{ form.search_area.html_name }}"
+                                           id="{{ form.search_area.id_for_label }}"
+                                           value="{{ form.search_area.value|default:'' }}"
+                                           maxlength="200"
+                                           autocomplete="off"
+                                           placeholder="Barrio, o calle y altura"
+                                           class="grow"
+                                           role="combobox"
+                                           aria-autocomplete="list"
+                                           aria-controls="place-options"
+                                           x-ref="text"
+                                           x-bind:aria-expanded="places.length > 0"
+                                           x-bind:aria-activedescendant="active >= 0 ? `place-option-${active}` : ''"
+                                           x-on:input.debounce.300ms="search()"
+                                           x-on:keydown.down.prevent="move(1)"
+                                           x-on:keydown.up.prevent="move(-1)"
+                                           x-on:keydown.enter.prevent="pick()">
+                                    <span x-show="loading" x-cloak class="loading loading-spinner loading-sm"></span>
+                                </label>
+                                <ul id="place-options" role="listbox" x-show="places.length" x-cloak class="absolute z-10 mt-1 w-full bg-base-100 border border-base-300 rounded-xl shadow-lg overflow-hidden">
+                                    <template x-for="(place, index) in places" x-bind:key="index">
+                                        <li role="option" x-bind:id="`place-option-${index}`" x-bind:aria-selected="index === active">
+                                            <button type="button"
+                                                    tabindex="-1"
+                                                    class="w-full text-left px-4 py-2.5"
+                                                    x-bind:class="index === active ? 'bg-[#E2F0EA] text-[#0A5141]' : ''"
+                                                    x-text="place.label"
+                                                    x-on:mouseenter="active = index"
+                                                    x-on:click="choose(place)"></button>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn bg-base-100 border border-base-300" x-on:click="locate()" x-bind:disabled="loading">
+                                {% heroicon_outline "viewfinder-circle" size=18 %}
+                                Usar mi ubicación
+                            </button>
+                        </div>
+                        <input type="hidden" name="{{ form.latitude.html_name }}" value="{{ form.latitude.value|default_if_none:''|stringformat:'s' }}" x-ref="latitude">
+                        <input type="hidden" name="{{ form.longitude.html_name }}" value="{{ form.longitude.value|default_if_none:''|stringformat:'s' }}" x-ref="longitude">
+                        <p class="text-error text-sm" x-show="error" x-text="error" x-cloak></p>
+                        {% for error in form.search_area.errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                        <p class="label">
+                            Direcciones de <a href="https://www.openstreetmap.org/copyright" class="link" target="_blank" rel="noopener">© OpenStreetMap</a>
+                        </p>
+                    </fieldset>
+                    <fieldset class="fieldset">
+                        <label class="fieldset-legend" for="{{ form.note.id_for_label }}">
+                            {{ form.note.label }}
+                            <span class="font-normal text-base-content/70">(opcional)</span>
+                        </label>
+                        {% render_field form.note class="textarea w-full" %}
+                        {% for error in form.note.errors %}
+                            <p class="text-error text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </fieldset>
+                    <div class="flex flex-wrap justify-end gap-3 pt-6 border-t border-base-300">
+                        <button type="submit" class="btn btn-primary btn-lg order-2">
+                            Continuar: elegir farmacias
+                            {% heroicon_outline "arrow-right" size=18 %}
+                        </button>
+                        <button type="submit" name="save_draft" class="btn btn-lg bg-base-100 border border-base-300 order-1">Guardar borrador</button>
+                    </div>
+                </form>
+                <aside class="flex-[1_1_18rem] space-y-4">
+                    <section aria-labelledby="next-steps" class="bg-base-100 border border-base-300 rounded-3xl p-6 space-y-4">
+                        <h2 id="next-steps" class="text-xl font-bold">Cómo sigue</h2>
+                        <ol class="space-y-3.5">
+                            <li class="flex gap-3">
+                                <span class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#E2F0EA] text-[#0A5141] text-sm font-bold">2</span>
+                                <span>Elegís en el mapa las farmacias y laboratorios a los que querés pedir presupuesto.</span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#E2F0EA] text-[#0A5141] text-sm font-bold">3</span>
+                                <span>Les enviamos tu solicitud por mail, con la receta si la adjuntaste.</span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#E2F0EA] text-[#0A5141]">{% heroicon_outline "chat-bubble-left" size=14 %}</span>
+                                <span>Cada una responde con su presupuesto en el chat del pedido, en <a href="{% url 'chats:customer_inbox' %}" class="link link-primary font-semibold">Mis pedidos</a>.</span>
+                            </li>
+                        </ol>
+                    </section>
+                    <section class="flex gap-3.5 items-start p-5 rounded-3xl bg-[#E2F0EA] text-[#0A5141]">
+                        {% heroicon_outline "shield-check" size=24 class="shrink-0" %}
+                        <p class="font-medium">Tu receta solo la ven las farmacias que elijas en el próximo paso.</p>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </main>
+{% endblock content %}
+
+{% block extra_body %}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('prescriptionFiles', () => ({
+                files: [],
+                dragging: false,
+                input() {
+                    return this.$root.querySelector('input[type=file]')
+                },
+                keep(files) {
+                    const transfer = new DataTransfer()
+                    files.forEach((file) => transfer.items.add(file))
+                    this.input().files = transfer.files
+                    this.files = Array.from(transfer.files)
+                },
+                add(fileList) {
+                    this.keep([...this.files, ...fileList])
+                },
+                remove(index) {
+                    this.keep(this.files.filter((_, position) => position !== index))
+                },
+                size(file) {
+                    const megabytes = file.size / (1024 * 1024)
+                    if (megabytes < 1) return `${Math.ceil(file.size / 1024)} KB`
+                    return `${megabytes.toFixed(1).replace('.', ',')} MB`
+                },
+            }))
+
+            Alpine.data('placeSearch', () => ({
+                places: [],
+                active: -1,
+                loading: false,
+                error: '',
+                ticket: 0,
+                unavailable: 'No pudimos buscar direcciones. Probá de nuevo en un rato.',
+                async request(params) {
+                    const ticket = ++this.ticket
+                    this.loading = true
+                    this.error = ''
+                    try {
+                        const response = await fetch(`${this.$root.dataset.url}?${new URLSearchParams(params)}`)
+                        const data = await response.json().catch(() => ({}))
+                        if (ticket !== this.ticket) return null
+                        if (response.ok && data.places) return data.places
+                        this.error = data.error || this.unavailable
+                        return []
+                    } catch {
+                        this.error = this.unavailable
+                        return []
+                    } finally {
+                        if (ticket === this.ticket) this.loading = false
+                    }
+                },
+                setCoordinates(coordinates) {
+                    this.$refs.latitude.value = coordinates ? coordinates.latitude : ''
+                    this.$refs.longitude.value = coordinates ? coordinates.longitude : ''
+                },
+                async search() {
+                    this.setCoordinates(null)
+                    const text = this.$refs.text.value.trim()
+                    const places = text.length < 3 ? [] : await this.request({ q: text })
+                    if (!places) return
+                    this.places = places
+                    this.active = -1
+                },
+                move(step) {
+                    if (!this.places.length) return
+                    this.active = (this.active + step + this.places.length) % this.places.length
+                },
+                pick() {
+                    if (this.places.length) this.choose(this.places[Math.max(this.active, 0)])
+                },
+                close() {
+                    this.places = []
+                    this.active = -1
+                },
+                choose(place) {
+                    this.$refs.text.value = place.label
+                    this.setCoordinates(place.coordinates)
+                    this.close()
+                },
+                locate() {
+                    if (!navigator.geolocation) {
+                        this.error = 'Tu navegador no permite compartir la ubicación.'
+                        return
+                    }
+                    this.loading = true
+                    navigator.geolocation.getCurrentPosition(
+                        async ({ coords }) => {
+                            const coordinates = { latitude: coords.latitude, longitude: coords.longitude }
+                            const [place] = (await this.request(coordinates)) || []
+                            this.error = ''
+                            this.choose({ label: place ? place.label : 'Mi ubicación actual', coordinates })
+                        },
+                        () => {
+                            this.loading = false
+                            this.error = 'No pudimos obtener tu ubicación. Revisá los permisos del navegador.'
+                        },
+                    )
+                },
+            }))
+        })
+    </script>
+{% endblock extra_body %}
