@@ -1,37 +1,19 @@
+from contextlib import suppress
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 
 from orders.models import DeliveryPreference, PreparationType, Urgency
-from shared.values import Coordinates, InvalidCoordinatesError
+from shared.values import (
+    Coordinates,
+    IncompleteLocationError,
+    InvalidCoordinatesError,
+    Location,
+)
 
-
-class MultipleFileInput(forms.ClearableFileInput):
-    allow_multiple_selected = True
-
-
-class PrescriptionFilesField(forms.FileField):
-    too_large_message = 'Cada archivo puede pesar hasta 10 MB.'
-    extensions = ('pdf', 'jpg', 'jpeg', 'png')
-    max_size = 10 * 1024 * 1024
-
-    def __init__(self, **kwargs):
-        accept = ','.join(f'.{extension}' for extension in self.extensions)
-        super().__init__(
-            widget=MultipleFileInput(attrs={'accept': accept}),
-            validators=[FileExtensionValidator(self.extensions)],
-            **kwargs,
-        )
-
-    def clean(self, data, initial=None):
-        files = data if isinstance(data, list | tuple) else [data]
-        cleaned = []
-        for file in files or [None]:
-            cleaned_file = super().clean(file, initial)
-            if cleaned_file and cleaned_file.size > self.max_size:
-                raise ValidationError(self.too_large_message, code='too_large')
-            cleaned.append(cleaned_file)
-        return [file for file in cleaned if file]
+PRESCRIPTION_EXTENSIONS = ('pdf', 'jpg', 'jpeg', 'png')
+PRESCRIPTION_MAX_SIZE = 10 * 1024 * 1024
 
 
 class NewOrderForm(forms.Form):
@@ -56,9 +38,11 @@ class NewOrderForm(forms.Form):
         ),
     )
 
-    prescription_files = PrescriptionFilesField(
+    prescription_file = forms.FileField(
         label='Receta médica',
         required=False,
+        validators=[FileExtensionValidator(PRESCRIPTION_EXTENSIONS)],
+        widget=forms.FileInput(attrs={'accept': '.pdf,.jpg,.jpeg,.png'}),
         help_text='Si no la tenés a mano, podés enviarla después desde el chat.',
     )
 
@@ -82,6 +66,18 @@ class NewOrderForm(forms.Form):
 
     longitude = forms.FloatField(widget=forms.HiddenInput, required=False)
 
+    address = forms.CharField(widget=forms.HiddenInput, required=False)
+
+    locality = forms.CharField(widget=forms.HiddenInput, required=False)
+
+    postal_code = forms.CharField(widget=forms.HiddenInput, required=False)
+
+    save_location = forms.BooleanField(
+        label='Guardar esta dirección en mi perfil',
+        required=False,
+        initial=True,
+    )
+
     note = forms.CharField(
         label='Notas para la farmacia',
         max_length=1000,
@@ -95,6 +91,13 @@ class NewOrderForm(forms.Form):
             },
         ),
     )
+
+    def clean_prescription_file(self):
+        file = self.cleaned_data['prescription_file']
+        if file and file.size > PRESCRIPTION_MAX_SIZE:
+            message = 'La receta puede pesar hasta 10 MB.'
+            raise ValidationError(message, code='too_large')
+        return file
 
     def clean(self):
         cleaned = super().clean()
@@ -110,4 +113,26 @@ class NewOrderForm(forms.Form):
                 'search_area',
                 'Elegí una opción de la lista o usá tu ubicación.',
             )
+            return cleaned
+        if cleaned.get('save_location'):
+            with suppress(IncompleteLocationError):
+                cleaned['profile_location'] = Location.create(
+                    cleaned.get('address'),
+                    cleaned.get('locality'),
+                    cleaned.get('postal_code'),
+                    cleaned['search_coordinates'],
+                )
         return cleaned
+
+    @classmethod
+    def initial_from(cls, location: Location | None):
+        if not location or not location.coordinates:
+            return {}
+        return {
+            'search_area': f'{location.address}, {location.locality}',
+            'latitude': location.coordinates.latitude,
+            'longitude': location.coordinates.longitude,
+            'address': location.address,
+            'locality': location.locality,
+            'postal_code': location.postal_code,
+        }

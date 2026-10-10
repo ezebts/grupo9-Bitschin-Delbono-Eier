@@ -163,12 +163,6 @@ STORAGES = {
 }
 
 
-# Places (OpenStreetMap data through Photon)
-
-PHOTON_URL = config('PHOTON_URL', default='https://photon.komoot.io')
-PHOTON_USER_AGENT = 'Magistral/0.1 (grupo9-Bitschin-Delbono-Eier)'
-
-
 # Background Tasks
 
 TASKS = {

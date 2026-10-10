@@ -1,15 +1,9 @@
-from http import HTTPStatus
-
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse
-from django.views import View
 from django.views.generic import FormView
 
+from accounts.commands.update_client_location import update_client_location
+from accounts.queries.client_profile import get_account_client_profile
 from orders.forms import NewOrderForm
-from shared.dataclasses import asdict
-from shared.places import PlaceSearchUnavailableError, find_place, search_places
-from shared.values import Coordinates, InvalidCoordinatesError
 from shared.views import RoleRequiredMixin
 
 
@@ -20,10 +14,15 @@ class NewOrderView(RoleRequiredMixin, FormView):
     def allows(self, user):
         return user.is_customer
 
+    def get_initial(self):
+        profile = get_account_client_profile(self.request.user.id)
+        return NewOrderForm.initial_from(profile.location)
+
     def form_valid(self, form):
         if 'save_draft' in self.request.POST:
             messages.info(self.request, 'Todavía no se pueden guardar borradores.')
         else:
+            self._save_location(form.cleaned_data)
             messages.info(
                 self.request,
                 'Tu solicitud está completa. '
@@ -31,33 +30,15 @@ class NewOrderView(RoleRequiredMixin, FormView):
             )
         return self.render_to_response(self.get_context_data(form=form))
 
-
-class PlaceSearchView(LoginRequiredMixin, View):
-    min_length = 3
-    max_length = 200
-
-    def get(self, request):
-        try:
-            places = self._places(request.GET)
-        except InvalidCoordinatesError as error:
-            return self._error(error, HTTPStatus.BAD_REQUEST)
-        except PlaceSearchUnavailableError as error:
-            return self._error(error, HTTPStatus.SERVICE_UNAVAILABLE)
-        return JsonResponse({'places': [asdict(place) for place in places]})
-
-    def _places(self, params):
-        if 'latitude' in params:
-            coordinates = Coordinates.create(
-                params.get('latitude'),
-                params.get('longitude'),
+    def _save_location(self, data):
+        if not data['save_location']:
+            return
+        location = data.get('profile_location')
+        if location is None:
+            messages.warning(
+                self.request,
+                'Para guardarla en tu perfil, elegí una dirección con calle y altura.',
             )
-            place = find_place(coordinates)
-            return (place,) if place else ()
-        text = params.get('q', '').strip()[: self.max_length]
-        if len(text) < self.min_length:
-            return ()
-        return search_places(text)
-
-    @staticmethod
-    def _error(error, status):
-        return JsonResponse({'error': str(error.message)}, status=status)
+            return
+        update_client_location(self.request.user.id, location)
+        messages.success(self.request, 'Guardamos la dirección en tu perfil.')
