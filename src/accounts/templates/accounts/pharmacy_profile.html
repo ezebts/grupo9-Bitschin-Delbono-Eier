@@ -27,29 +27,29 @@
                     {% endif %}
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Datos del establecimiento</h2>
-                        {% include "accounts/_choices.html" with field=form.kind pills=True %}
+                        {% include "shared/_choices.html" with field=form.kind pills=True %}
                         <div class="grid sm:grid-cols-2 gap-4">
-                            {% include "accounts/_field.html" with field=form.trade_name %}
-                            {% include "accounts/_field.html" with field=form.legal_name %}
-                            {% include "accounts/_field.html" with field=form.cuit %}
-                            {% include "accounts/_field.html" with field=form.technical_director %}
-                            {% include "accounts/_field.html" with field=form.license %}
+                            {% include "shared/_field.html" with field=form.trade_name %}
+                            {% include "shared/_field.html" with field=form.legal_name %}
+                            {% include "shared/_field.html" with field=form.cuit %}
+                            {% include "shared/_field.html" with field=form.technical_director %}
+                            {% include "shared/_field.html" with field=form.license %}
                         </div>
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Contacto y avisos por mail</h2>
                         <div class="grid sm:grid-cols-2 gap-4">
-                            {% include "accounts/_field.html" with field=form.request_email %}
-                            {% include "accounts/_field.html" with field=form.phone %}
-                            {% include "accounts/_field.html" with field=form.website %}
+                            {% include "shared/_field.html" with field=form.request_email %}
+                            {% include "shared/_field.html" with field=form.phone %}
+                            {% include "shared/_field.html" with field=form.website %}
                         </div>
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Ubicación</h2>
-                        {% include "accounts/_field.html" with field=form.address %}
+                        {% include "shared/_field.html" with field=form.address %}
                         <div class="grid sm:grid-cols-2 gap-4">
-                            {% include "accounts/_field.html" with field=form.locality %}
-                            {% include "accounts/_field.html" with field=form.postal_code %}
+                            {% include "shared/_field.html" with field=form.locality %}
+                            {% include "shared/_field.html" with field=form.postal_code %}
                         </div>
                     </section>
                     <div class="grid lg:grid-cols-2 gap-5">
@@ -63,7 +63,7 @@
                             <h2 class="text-2xl font-semibold">Entregas</h2>
                             {% include "accounts/_checkbox.html" with field=form.pickup %}
                             {% include "accounts/_checkbox.html" with field=form.home_delivery %}
-                            {% include "accounts/_field.html" with field=form.delivery_radius %}
+                            {% include "shared/_field.html" with field=form.delivery_radius %}
                             <fieldset class="fieldset">
                                 <legend class="fieldset-legend">{{ form.delivery_base_cost.label }}</legend>
                                 <div class="flex gap-2">

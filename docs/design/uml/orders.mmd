@@ -1,5 +1,5 @@
 classDiagram
-    Pedido "1" *-- "1..*" PrescriptionFile
+    Pedido "1" *-- "0..1" PrescriptionFile
     Pedido "1" *-- "*" StatusEvent
     Pedido *-- PedidoCode
     Pedido *-- PedidoStatus
@@ -20,7 +20,7 @@ classDiagram
         formula: str
         presentation: str
         note: str
-        +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, files) Pedido$
+        +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, file) Pedido$
         +updateDraft(formula, presentation, urgency, deliveryPreference, note)
         +attach(file)
         +submit()

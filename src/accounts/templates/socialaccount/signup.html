@@ -15,10 +15,10 @@
         {% endfor %}
         {% include "accounts/_role_field.html" with field=form.role %}
         <div class="grid sm:grid-cols-2 gap-x-3">
-            {% include "accounts/_field.html" with field=form.first_name %}
-            {% include "accounts/_field.html" with field=form.last_name %}
+            {% include "shared/_field.html" with field=form.first_name %}
+            {% include "shared/_field.html" with field=form.last_name %}
         </div>
-        {% include "accounts/_field.html" with field=form.email %}
+        {% include "shared/_field.html" with field=form.email %}
         {{ redirect_field }}
         <button type="submit" class="btn btn-primary btn-lg w-full">Crear cuenta</button>
     </form>
