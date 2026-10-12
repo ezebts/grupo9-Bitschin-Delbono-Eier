@@ -1,9 +1,11 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 
 from django.db.models import F, OuterRef, Subquery
 
 from chats.models import Conversation, Message
+from orders.models import DeliveryPreference, QuoteRequestStatus
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,16 @@ class OpenConversation:
     title: str
     customer_name: str
     waiting_for_pharmacy: bool
+    quote_status: str
+    quote_status_label: str
+    quote_price: Decimal | None
+    preparation_time: str
+    delivery_preference_label: str
+    delivery_preferences: tuple[str, ...]
+    delivery_cost: Decimal
+    valid_until: date | None
+    quoted_at: datetime | None
+    delivery_options: tuple[str, ...]
     messages: tuple[ChatMessage, ...]
 
 
@@ -65,20 +77,9 @@ def get_pharmacy_inbox(user_id, search='', *, unread_only=False) -> PharmacyInbo
         )
     }
 
-    last_user_messages = {
-        message.conversation_id: message
-        for message in Message.objects.filter(
-            conversation_id__in=conversation_ids,
-            pk=Subquery(
-                latest.exclude(sender=Message.Sender.SYSTEM).values('pk')[:1],
-            ),
-        )
-    }
-
     listed = []
     for conversation in found:
         last = last_messages.get(conversation.pk)
-        last_user = last_user_messages.get(conversation.pk)
         last_message = None
 
         if last is not None:
@@ -94,7 +95,7 @@ def get_pharmacy_inbox(user_id, search='', *, unread_only=False) -> PharmacyInbo
             ListedConversation(
                 id=conversation.pk,
                 title=conversation.title,
-                waiting_for_pharmacy=last_user is None or last_user.is_customer,
+                waiting_for_pharmacy=(last is None or last.is_customer),
                 updated_at=conversation.updated_at,
                 last_message=last_message,
             )
@@ -117,6 +118,10 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
     conversation = (
         Conversation.objects.with_messages()
         .for_pharmacy(user_id)
+        .select_related(
+            'quote_request__order',
+            'quote_request__pharmacy',
+        )
         .annotate(
             customer_first_name=F(f'{customer}__first_name'),
             customer_last_name=F(f'{customer}__last_name'),
@@ -136,8 +141,7 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
     )
 
     latest_conversation_sender = (
-        conversation.messages.exclude(sender=Message.Sender.SYSTEM)
-        .order_by('-created_at', '-pk')
+        conversation.messages.order_by('-created_at', '-pk')
         .values_list('sender', flat=True)
         .first()
     )
@@ -145,11 +149,28 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
     customer_name = (
         f'{conversation.customer_first_name} {conversation.customer_last_name}'
     ).strip()
+    quote_request = conversation.quote_request
 
     return OpenConversation(
         id=conversation.pk,
         title=conversation.title,
         customer_name=customer_name,
-        waiting_for_pharmacy=latest_conversation_sender != Message.Sender.PHARMACY,
+        waiting_for_pharmacy=latest_conversation_sender
+        in {None, Message.Sender.CUSTOMER},
+        quote_status=quote_request.status,
+        quote_status_label=QuoteRequestStatus(quote_request.status).label,
+        quote_price=quote_request.price,
+        preparation_time=quote_request.preparation_time,
+        delivery_preference_label=(
+            ' o '.join(
+                DeliveryPreference(preference).label.lower()
+                for preference in quote_request.delivery_preferences
+            )
+        ),
+        delivery_preferences=quote_request.delivery_preferences,
+        delivery_cost=quote_request.delivery_cost,
+        valid_until=quote_request.valid_until,
+        quoted_at=quote_request.quoted_at,
+        delivery_options=tuple(quote_request.order.delivery_preferences),
         messages=messages,
     )

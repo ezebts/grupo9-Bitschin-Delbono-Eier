@@ -1,12 +1,19 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from django.db.models import F, OuterRef, Subquery
 
 from accounts.models import PreparationTag, User
 from chats.models import Conversation, Message
-from orders.models import DeliveryPreference, Order, OrderProgress, Urgency
+from orders.models import (
+    DeliveryPreference,
+    Order,
+    OrderProgress,
+    QuoteRequestStatus,
+    Urgency,
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +31,10 @@ class ListedConversation:
     title: str
     pharmacy_name: str
     waiting_for_pharmacy: bool
+    quote_status: str
+    quote_status_label: str
+    quote_price: Decimal | None
+    preparation_time: str
     updated_at: datetime
     last_message: ChatMessage | None
 
@@ -35,6 +46,14 @@ class OpenConversation:
     pharmacy_name: str
     address: str
     hours: str
+    quote_status: str
+    quote_status_label: str
+    quote_price: Decimal | None
+    preparation_time: str
+    delivery_preference_label: str
+    delivery_cost: Decimal
+    valid_until: date | None
+    quoted_at: datetime | None
     messages: tuple[ChatMessage, ...]
 
 
@@ -64,6 +83,7 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
     found = (
         Conversation.objects.for_customer(user_id)
         .for_order(order_id)
+        .select_related('quote_request__pharmacy')
         .annotate(pharmacy_name=F('quote_request__pharmacy__trade_name'))
     )
 
@@ -81,21 +101,10 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
         )
     }
 
-    last_user_messages = {
-        message.conversation_id: message
-        for message in Message.objects.filter(
-            conversation_id__in=conversation_ids,
-            pk=Subquery(
-                latest.exclude(sender=Message.Sender.SYSTEM).values('pk')[:1],
-            ),
-        )
-    }
-
     listed = []
     for conversation in found:
         last_message = None
         last = last_messages.get(conversation.pk)
-        last_user = last_user_messages.get(conversation.pk)
 
         if last is not None:
             last_message = ChatMessage(
@@ -111,7 +120,13 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
                 id=conversation.pk,
                 title=conversation.title,
                 pharmacy_name=conversation.pharmacy_name,
-                waiting_for_pharmacy=last_user is None or last_user.is_customer,
+                waiting_for_pharmacy=(last is None or last.is_customer),
+                quote_status=conversation.quote_request.status,
+                quote_status_label=QuoteRequestStatus(
+                    conversation.quote_request.status
+                ).label,
+                quote_price=conversation.quote_request.price,
+                preparation_time=conversation.quote_request.preparation_time,
                 updated_at=conversation.updated_at,
                 last_message=last_message,
             )
@@ -143,7 +158,7 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
 
     conversation = (
         Conversation.objects.with_messages()
-        .select_related('quote_request__pharmacy')
+        .select_related('quote_request__pharmacy', 'quote_request__order')
         .for_customer(user_id)
         .for_order(order_id)
         .get(pk=conversation_id)
@@ -155,6 +170,7 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
     moment = datetime.now(user.timezone)
 
     hours = pharmacy.opening_hours.format(moment) if pharmacy.opening_hours else ''
+    quote_request = conversation.quote_request
 
     return OpenConversation(
         id=conversation.pk,
@@ -162,6 +178,19 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
         pharmacy_name=pharmacy.trade_name,
         address=address,
         hours=hours,
+        quote_status=quote_request.status,
+        quote_status_label=QuoteRequestStatus(quote_request.status).label,
+        quote_price=quote_request.price,
+        preparation_time=quote_request.preparation_time,
+        delivery_preference_label=(
+            ' o '.join(
+                DeliveryPreference(preference).label.lower()
+                for preference in quote_request.delivery_preferences
+            )
+        ),
+        delivery_cost=quote_request.delivery_cost,
+        valid_until=quote_request.valid_until,
+        quoted_at=quote_request.quoted_at,
         messages=tuple(
             ChatMessage(
                 body=message.body,

@@ -1,5 +1,12 @@
 from django.db import models
 from django.db.models import Case, CharField, Count, Exists, OuterRef, Q, Value, When
+from django.utils import timezone
+
+from orders.exceptions import (
+    QuoteCannotBeEditedError,
+    QuoteCannotBeSubmittedError,
+    QuoteCannotBeWithdrawnError,
+)
 
 
 def prescriptions_path(instance, filename):
@@ -191,6 +198,30 @@ class QuoteRequest(models.Model):
         default=QuoteRequestStatus.WAITING,
     )
 
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    preparation_time = models.CharField(max_length=80, blank=True)
+
+    _delivery_preferences = models.JSONField(
+        default=list,
+        db_column='delivery_preferences',
+    )
+
+    delivery_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+
+    valid_until = models.DateField(null=True, blank=True)
+
+    quoted_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -204,6 +235,43 @@ class QuoteRequest(models.Model):
 
     def __str__(self):
         return f'{self.order.code} → {self.pharmacy}'
+
+    def submit_quote(self):
+        if self.status != QuoteRequestStatus.WAITING:
+            raise QuoteCannotBeSubmittedError
+
+        self.status = QuoteRequestStatus.QUOTED
+        self.quoted_at = timezone.now()
+
+    def update_quote(self):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeEditedError
+
+        self.quoted_at = timezone.now()
+
+    def withdraw_quote(self):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeWithdrawnError
+
+        self.status = QuoteRequestStatus.WITHDRAWN
+
+    def set_quote_terms(
+        self,
+        price,
+        preparation_time,
+        delivery_preferences,
+        delivery_cost,
+        valid_until,
+    ):
+        self.price = price
+        self.preparation_time = preparation_time
+        self._delivery_preferences = list(delivery_preferences)
+        self.delivery_cost = delivery_cost
+        self.valid_until = valid_until
+
+    @property
+    def delivery_preferences(self):
+        return tuple(self._delivery_preferences)
 
     @classmethod
     def create(cls, order, pharmacy):

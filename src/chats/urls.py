@@ -17,4 +17,14 @@ urlpatterns = [
         views.SendMessageView.as_view(),
         name='send_message',
     ),
+    path(
+        'conversations/<int:conversation_id>/quote/',
+        views.SaveQuoteView.as_view(),
+        name='save_quote',
+    ),
+    path(
+        'conversations/<int:conversation_id>/quote/withdraw/',
+        views.WithdrawQuoteView.as_view(),
+        name='withdraw_quote',
+    ),
 ]

@@ -87,13 +87,55 @@
         <aside class="w-full lg:w-80 shrink-0 flex flex-col gap-4">
             <section aria-labelledby="presupuesto-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3.5">
                 <h2 id="presupuesto-titulo" class="text-[15px] font-bold">Tu presupuesto</h2>
-                <p class="text-sm text-[#51605A]">Sale del pedido.</p>
-                <p class="text-3xl font-bold" aria-label="Precio. Sale del presupuesto.">—</p>
-                <dl class="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-2 text-sm">
-                    <dt class="text-[#51605A]">Lista en</dt><dd class="font-semibold" aria-label="Plazo. Sale del presupuesto.">—</dd>
-                    <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold" aria-label="Entrega. Sale del presupuesto.">—</dd>
-                    <dt class="text-[#51605A]">Válido hasta</dt><dd class="font-semibold" aria-label="Vencimiento. Sale del presupuesto.">—</dd>
-                </dl>
+                {% if selected %}
+                    {% if selected.quote_status == 'quoted' or selected.quote_status == 'accepted' %}
+                        <span class="self-start rounded-full px-2.5 py-1 text-sm font-bold {% if selected.quote_status == 'accepted' %}bg-[#E2F0EA] text-[#0A5141]{% else %}bg-[#E7EEFD] text-[#1E4FC2]{% endif %}">{{ selected.quote_status_label }}</span>
+                        <p class="text-3xl font-bold">$ {{ selected.quote_price|floatformat:"2g" }}</p>
+                        <dl class="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-2 text-sm">
+                            <dt class="text-[#51605A]">Lista en</dt><dd class="font-semibold">{{ selected.preparation_time }}</dd>
+                            <dt class="text-[#51605A]">Entrega</dt>
+                            <dd class="font-semibold">{{ selected.delivery_preference_label }}{% if selected.delivery_cost %} (+ $ {{ selected.delivery_cost|floatformat:"2g" }}){% endif %}</dd>
+                            <dt class="text-[#51605A]">Válido hasta</dt><dd class="font-semibold">{{ selected.valid_until|date:"j M Y" }}</dd>
+                            <dt class="text-[#51605A]">Enviado</dt><dd class="font-semibold">{{ selected.quoted_at|date:"j M Y, H:i" }}</dd>
+                        </dl>
+                    {% elif selected.quote_status == 'withdrawn' %}
+                        <p class="rounded-xl bg-[#FCEFD9] p-3 text-sm font-semibold text-[#8A4B00]">Presupuesto retirado.</p>
+                    {% elif selected.quote_status == 'waiting' %}
+                        <p class="text-sm text-[#51605A]">Todavía no enviaste un presupuesto.</p>
+                    {% else %}
+                        <p class="rounded-xl bg-[#ECEFED] p-3 text-sm text-[#3F4B47]">{{ selected.quote_status_label }}. Ya no se puede modificar.</p>
+                    {% endif %}
+
+                    {% if selected.quote_status == 'waiting' or selected.quote_status == 'quoted' %}
+                        <form method="post" action="{% url 'chats:save_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-post="{% url 'chats:save_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML" class="flex flex-col gap-3 border-t border-base-300 pt-3">
+                            {% csrf_token %}
+                            <h3 class="font-bold">{% if selected.quote_status == 'quoted' %}Editar presupuesto{% else %}Enviar un presupuesto{% endif %}</h3>
+                            {% for error in quote_form.non_field_errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+                            <label class="flex flex-col gap-1 text-sm font-semibold">{{ quote_form.price.label }}{% render_field quote_form.price class="input w-full" %}{% for error in quote_form.price.errors %}<span class="text-error font-normal">{{ error }}</span>{% endfor %}</label>
+                            <label class="flex flex-col gap-1 text-sm font-semibold">{{ quote_form.preparation_time.label }}{% render_field quote_form.preparation_time class="input w-full" %}{% for error in quote_form.preparation_time.errors %}<span class="text-error font-normal">{{ error }}</span>{% endfor %}</label>
+                            <fieldset class="flex flex-col gap-2">
+                                <legend class="text-sm font-semibold">{{ quote_form.delivery_preferences.label }}</legend>
+                                {% for choice in quote_form.delivery_preferences %}
+                                    <label class="flex items-center gap-2 text-sm">{{ choice.tag }}{{ choice.choice_label }}</label>
+                                {% endfor %}
+                                {% for error in quote_form.delivery_preferences.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+                            </fieldset>
+                            <label class="flex flex-col gap-1 text-sm font-semibold">{{ quote_form.delivery_cost.label }}{% render_field quote_form.delivery_cost class="input w-full" %}{% for error in quote_form.delivery_cost.errors %}<span class="text-error font-normal">{{ error }}</span>{% endfor %}</label>
+                            <label class="flex flex-col gap-1 text-sm font-semibold">{{ quote_form.valid_until.label }}{% render_field quote_form.valid_until class="input w-full" %}{% for error in quote_form.valid_until.errors %}<span class="text-error font-normal">{{ error }}</span>{% endfor %}</label>
+                            <button class="btn btn-primary w-full" type="submit">{% if selected.quote_status == 'quoted' %}Guardar cambios{% else %}Enviar presupuesto{% endif %}</button>
+                        </form>
+                    {% endif %}
+
+                    {% if selected.quote_status == 'quoted' %}
+                        <form method="post" action="{% url 'chats:withdraw_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-post="{% url 'chats:withdraw_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML" hx-confirm="¿Retirar el presupuesto? El cliente ya no podrá aceptarlo.">
+                            {% csrf_token %}
+                            <button class="btn btn-ghost w-full text-[#A3341C]" type="submit">Retirar presupuesto</button>
+                        </form>
+                    {% endif %}
+                    {% if quote_error %}<p role="alert" class="text-error text-sm">{{ quote_error }}</p>{% endif %}
+                {% else %}
+                    <p class="text-sm text-[#51605A]">Seleccioná una conversación para ver o enviar un presupuesto.</p>
+                {% endif %}
             </section>
             {% if selected %}
                 <section aria-labelledby="cliente-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-2">

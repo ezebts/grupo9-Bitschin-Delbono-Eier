@@ -77,8 +77,8 @@
                                 {% for conversation in conversations %}
                                     <tr>
                                         <td class="py-2 border-t border-base-300 font-semibold">{{ conversation.pharmacy_name }}</td>
-                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
-                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">{% if conversation.quote_price %}$ {{ conversation.quote_price|floatformat:"2g" }}{% else %}—{% endif %}</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">{{ conversation.preparation_time|default:"—" }}</td>
                                     </tr>
                                 {% empty %}
                                     <tr>
