@@ -10,7 +10,7 @@
                 {% elif conversation.quote_status == 'withdrawn' %}
                     <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ECEFED] text-[#3F4B47]">Presupuesto retirado</span>
                 {% elif conversation.quote_price %}
-                    <span class="text-sm text-[#3F4B47]">Presupuesto <strong class="text-base-content">$ {{ conversation.quote_price|floatformat:"2g" }}</strong></span>
+                    <span class="text-sm text-[#3F4B47]">Presupuesto <strong class="text-base-content">{{ conversation.quote_currency }} {{ conversation.quote_price|floatformat:"2g" }}</strong>{% if conversation.preparation_time %} · {{ conversation.preparation_time }}{% endif %}</span>
                 {% else %}
                     <span class="text-sm text-[#3F4B47]">{{ conversation.quote_status_label }}</span>
                 {% endif %}
@@ -31,25 +31,12 @@
                     <span aria-hidden="true" class="w-10 h-10 rounded-xl bg-[#E2F0EA] text-[#0A5141] inline-flex items-center justify-center font-bold text-sm">{{ selected.pharmacy_name|slice:":1" }}</span>
                     <span class="flex flex-col gap-0.5">
                         <span class="font-bold text-base">{{ selected.pharmacy_name }}</span>
-                        <span class="text-[13px] text-[#51605A]" aria-label="Dirección y horario de la farmacia.">{% if selected.address %}{{ selected.address }}{% else %}—{% endif %} · {% if selected.hours %}{{ selected.hours }}{% else %}—{% endif %}</span>
+                        <span class="text-[13px] text-[#51605A]" aria-label="Dirección y horario de la farmacia.">{% if selected.address %}{{ selected.address }}{% else %}—{% endif %}{% if selected.hours %} · {{ selected.hours }}{% endif %}</span>
                     </span>
                 </div>
             </div>
             <div class="flex-1 min-h-0 overflow-y-auto p-5 bg-[#F7F9F7] flex flex-col gap-4" data-messages aria-live="polite">
-                {% if selected.quote_status == 'quoted' or selected.quote_status == 'accepted' %}
-                    <article aria-label="Presupuesto de {{ selected.pharmacy_name }}" class="self-start w-full max-w-[78%] rounded-2xl rounded-bl-sm border border-base-300 bg-base-100 p-4">
-                        <h2 class="text-sm font-bold">{{ selected.quote_status_label }}</h2>
-                        <p class="my-1 text-2xl font-bold">$ {{ selected.quote_price|floatformat:"2g" }}</p>
-                        <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                            <dt class="text-[#51605A]">Lista en</dt><dd class="font-semibold">{{ selected.preparation_time }}</dd>
-                            <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold">{{ selected.delivery_preference_label }}{% if selected.delivery_cost %} (+ $ {{ selected.delivery_cost|floatformat:"2g" }}){% endif %}</dd>
-                            <dt class="text-[#51605A]">Válido hasta</dt><dd class="font-semibold">{{ selected.valid_until|date:"j M Y" }}</dd>
-                            <dt class="text-[#51605A]">Enviado</dt><dd class="font-semibold">{{ selected.quoted_at|date:"j M Y, H:i" }}</dd>
-                        </dl>
-                    </article>
-                {% elif selected.quote_status == 'withdrawn' %}
-                    <p role="status" class="self-center rounded-full bg-[#ECEFED] px-3 py-1.5 text-[13px] text-[#3F4B47]">La farmacia retiró este presupuesto.</p>
-                {% endif %}
+                {% include 'chats/_customer_quote_request_message.html' %}
                 {% for message in selected.messages %}
                     {% if message.is_system %}
                         <p class="self-center inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECEFED] text-[13px] text-[#3F4B47]">{{ message.body }} · <time>{{ message.created_at|date:"d/m H:i" }}</time></p>
@@ -59,19 +46,28 @@
                             <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_customer %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}">{{ message.body|linebreaksbr }}</p>
                         </div>
                     {% endif %}
+                    {% if message.follow_with_quote_card %}
+                        {% include 'chats/_customer_quote_card.html' %}
+                    {% elif message.follow_with_withdrawn_notice %}
+                        <p role="status" class="self-center rounded-full bg-[#ECEFED] px-3 py-1.5 text-[13px] text-[#3F4B47]">La farmacia retiró este presupuesto.</p>
+                    {% endif %}
                 {% empty %}
                     <p class="text-sm text-[#51605A]">Todavía no hay mensajes en esta conversación.</p>
                 {% endfor %}
+                {% if selected.quote_card_at_end %}
+                    {% include 'chats/_customer_quote_card.html' %}
+                {% endif %}
             </div>
             <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:customer_reply' selected.id %}?order_id={{ order_id }}" data-chat-form hx-post="{% url 'chats:customer_reply' selected.id %}?order_id={{ order_id }}" hx-target="#customer-chat" hx-swap="outerHTML">
                 {% csrf_token %}
-                <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para la farmacia</label>
+                <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para {{ selected.pharmacy_name }}</label>
                 <div class="flex gap-2 items-end">
                     {% render_field form.message class="textarea w-full min-w-0 flex-1 min-h-12 max-h-24 resize-none overflow-y-auto text-[15px] leading-normal" %}
                     <button class="btn btn-primary btn-square shrink-0" type="submit" aria-label="Enviar mensaje">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
                     </button>
                 </div>
+                <p class="text-[13px] text-[#51605A]">La farmacia recibe cada mensaje tuyo por mail.</p>
                 {% for error in form.message.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
             </form>
         {% else %}

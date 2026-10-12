@@ -7,6 +7,12 @@ from orders.exceptions import (
     QuoteCannotBeSubmittedError,
     QuoteCannotBeWithdrawnError,
 )
+from shared.dataclasses import asdict, from_dict
+from shared.values import Money
+
+
+def _zero_delivery_cost():
+    return asdict(Money.ARS(0))
 
 
 def prescriptions_path(instance, filename):
@@ -198,12 +204,7 @@ class QuoteRequest(models.Model):
         default=QuoteRequestStatus.WAITING,
     )
 
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-    )
+    _price = models.JSONField(null=True, blank=True)
 
     preparation_time = models.CharField(max_length=80, blank=True)
 
@@ -212,11 +213,7 @@ class QuoteRequest(models.Model):
         db_column='delivery_preferences',
     )
 
-    delivery_cost = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
+    _delivery_cost = models.JSONField(default=_zero_delivery_cost, blank=True)
 
     valid_until = models.DateField(null=True, blank=True)
 
@@ -255,18 +252,28 @@ class QuoteRequest(models.Model):
 
         self.status = QuoteRequestStatus.WITHDRAWN
 
+    @property
+    def price(self) -> Money | None:
+        return from_dict(Money, self._price)
+
+    @property
+    def delivery_cost(self) -> Money:
+        money = from_dict(Money, self._delivery_cost)
+        return money if money is not None else Money.ARS(0)
+
     def set_quote_terms(
         self,
-        price,
+        *,
+        price: Money,
         preparation_time,
         delivery_preferences,
-        delivery_cost,
+        delivery_cost: Money,
         valid_until,
     ):
-        self.price = price
+        self._price = asdict(price)
+        self._delivery_cost = asdict(delivery_cost)
         self.preparation_time = preparation_time
         self._delivery_preferences = list(delivery_preferences)
-        self.delivery_cost = delivery_cost
         self.valid_until = valid_until
 
     @property

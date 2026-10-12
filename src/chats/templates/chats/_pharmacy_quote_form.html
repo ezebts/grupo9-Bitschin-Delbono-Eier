@@ -1,0 +1,60 @@
+{% load widget_tweaks %}
+<form method="post" action="{% url 'chats:save_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-post="{% url 'chats:save_quote' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML" class="flex flex-col gap-4" data-quote-form>
+    {% csrf_token %}
+    {% for error in quote_form.non_field_errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+    <div>
+        <label class="mb-1.5 block text-sm font-semibold" for="{{ quote_form.price.id_for_label }}">{{ quote_form.price.label }}</label>
+        <div class="flex gap-2">
+            <div class="w-24 shrink-0">
+                <label class="sr-only" for="{{ quote_form.price_currency.id_for_label }}">{{ quote_form.price_currency.label }}</label>
+                {% render_field quote_form.price_currency class="select min-h-12 w-full text-[15px]" %}
+                {% for error in quote_form.price_currency.errors %}<span class="text-error text-sm font-normal">{{ error }}</span>{% endfor %}
+            </div>
+            <div class="min-w-0 flex-1">
+                {% render_field quote_form.price class="input min-h-12 w-full text-lg font-bold" %}
+                {% for error in quote_form.price.errors %}<span class="text-error text-sm font-normal">{{ error }}</span>{% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+        <div class="min-w-0">
+            <label class="mb-1.5 block text-sm font-semibold" for="{{ quote_form.preparation_time.id_for_label }}">{{ quote_form.preparation_time.label }}</label>
+            {% render_field quote_form.preparation_time class="select min-h-12 w-full text-[15px]" %}
+            {% for error in quote_form.preparation_time.errors %}<span class="text-error text-sm font-normal">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="min-w-0">
+            <label class="mb-1.5 block text-sm font-semibold" for="{{ quote_form.valid_until.id_for_label }}">{{ quote_form.valid_until.label }}</label>
+            {% render_field quote_form.valid_until class="input min-h-12 w-full text-[15px]" %}
+            {% for error in quote_form.valid_until.errors %}<span class="text-error text-sm font-normal">{{ error }}</span>{% endfor %}
+        </div>
+    </div>
+    <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+        <legend class="mb-2 p-0 text-sm font-semibold">{{ quote_form.delivery_preferences.label }}</legend>
+        {% for choice in quote_form.delivery_preferences %}
+            {% if choice.data.value == 'home_delivery' %}
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <label class="flex min-h-10 items-center gap-2.5 text-[15px]">{{ choice.tag }}{{ choice.choice_label }}</label>
+                    <div class="flex gap-2">
+                        <div class="w-24 shrink-0">
+                            <label class="sr-only" for="{{ quote_form.delivery_cost_currency.id_for_label }}">{{ quote_form.delivery_cost_currency.label }}</label>
+                            {% render_field quote_form.delivery_cost_currency class="select min-h-10 w-full text-[15px]" %}
+                        </div>
+                        <div class="w-[7.5rem]">
+                            <label class="sr-only" for="{{ quote_form.delivery_cost.id_for_label }}">{{ quote_form.delivery_cost.label }}</label>
+                            {% render_field quote_form.delivery_cost class="input min-h-10 w-full text-[15px]" placeholder="Costo" %}
+                        </div>
+                    </div>
+                    {% for error in quote_form.delivery_cost_currency.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+                    {% for error in quote_form.delivery_cost.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+                </div>
+            {% else %}
+                <label class="flex min-h-10 items-center gap-2.5 text-[15px]">{{ choice.tag }}{{ choice.choice_label }}</label>
+            {% endif %}
+        {% endfor %}
+        {% for error in quote_form.delivery_preferences.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+        {% if 'home_delivery' not in selected.delivery_options %}
+            <input type="hidden" name="delivery_cost_currency" value="{{ quote_form.delivery_cost_currency.value|default:'ARS' }}">
+        {% endif %}
+    </fieldset>
+    <button class="btn btn-primary min-h-[52px] w-full text-base" type="submit">{% if selected.quote_status == 'quoted' %}Enviar presupuesto actualizado{% else %}Enviar presupuesto{% endif %}</button>
+</form>

@@ -19,7 +19,7 @@ urlpatterns = [
     ),
     path(
         'conversations/<int:conversation_id>/quote/',
-        views.SaveQuoteView.as_view(),
+        views.ChatSaveQuoteView.as_view(),
         name='save_quote',
     ),
     path(

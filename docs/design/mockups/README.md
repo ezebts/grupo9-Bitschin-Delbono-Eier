@@ -16,7 +16,6 @@ Each file is one screen. The order of this list is the flow. Links inside each s
 3. [My orders](client/03-my-orders.html). Orders by status: waiting for quotes, quoted, in progress, and finished.
 4. [Pharmacy chat](client/04-pharmacy-chat.html). Compare quotes for one order and continue the chat with each pharmacy.
 5. [Profile](client/05-profile.html). Personal details, location, and notification preferences.
-6. [Order in progress](client/06-order-in-progress.html). Preparation status of an accepted order.
 
 ## Mail
 

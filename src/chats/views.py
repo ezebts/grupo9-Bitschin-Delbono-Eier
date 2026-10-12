@@ -4,14 +4,14 @@ from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 
 from chats.commands.send_message import send_message
-from chats.forms import CustomerMessageForm, MessageForm, QuoteForm
+from chats.forms import ChatQuoteForm, CustomerMessageForm, MessageForm
 from chats.models import Conversation
 from chats.queries.customer_inbox import (
     get_customer_conversation,
     get_customer_inbox,
 )
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
-from orders.commands.save_quote import save_quote
+from orders.commands.submit_quote import submit_quote
 from orders.commands.withdraw_quote import withdraw_quote
 from orders.models import Order, QuoteRequestStatus
 from shared.exceptions import Error
@@ -21,6 +21,11 @@ from shared.views import RoleRequiredMixin
 class PharmacyInboxMixin(RoleRequiredMixin):
     template_name = 'chats/inbox.html'
     partial_template_name = 'chats/_inbox_content.html'
+    inbox_filters = (
+        QuoteRequestStatus.WAITING,
+        QuoteRequestStatus.QUOTED,
+        QuoteRequestStatus.ACCEPTED,
+    )
 
     def allows(self, user):
         return user.is_pharmacy
@@ -40,11 +45,14 @@ class PharmacyInboxMixin(RoleRequiredMixin):
     def quote_initial(selected):
         if selected.quote_status != QuoteRequestStatus.QUOTED:
             return {
+                'price_currency': selected.quote_currency,
+                'delivery_cost_currency': selected.delivery_cost_currency,
                 'delivery_preferences': selected.delivery_options,
-                'delivery_cost': 0,
             }
 
         return {
+            'price_currency': selected.quote_currency,
+            'delivery_cost_currency': selected.delivery_cost_currency,
             'price': selected.quote_price,
             'preparation_time': selected.preparation_time,
             'delivery_preferences': selected.delivery_preferences,
@@ -60,15 +68,17 @@ class PharmacyInboxMixin(RoleRequiredMixin):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         search = self.request.GET.get('search', '').strip()
-        filter_value = self.request.GET.get('filter', 'all')
-        if filter_value not in {'all', 'unread'}:
-            filter_value = 'all'
+        raw_filter = self.request.GET.get('filter')
+        if raw_filter:
+            filter_value = QuoteRequestStatus(raw_filter)
+        else:
+            filter_value = QuoteRequestStatus.WAITING
 
         user_id = self.request.user.id
         inbox = get_pharmacy_inbox(
             user_id,
             search,
-            unread_only=filter_value == 'unread',
+            quote_filter=filter_value,
         )
         conversation_id = self.conversation_id()
 
@@ -82,26 +92,48 @@ class PharmacyInboxMixin(RoleRequiredMixin):
         quote_form = context.get('quote_form')
         if quote_form is None:
             quote_form = (
-                QuoteForm(
+                ChatQuoteForm(
                     initial=self.quote_initial(selected),
                     delivery_options=selected.delivery_options,
                 )
                 if selected
-                else QuoteForm()
+                else ChatQuoteForm()
             )
+
+        message_form = context.get('form')
+        if not isinstance(message_form, MessageForm):
+            message_form = MessageForm()
 
         context.update(
             conversations=inbox.conversations,
             selected=selected,
             search=search,
             filter=filter_value,
-            form=context.get('form', MessageForm()),
+            inbox_filters=self.inbox_filters,
+            form=message_form,
             quote_form=quote_form,
             quote_error=context.get('quote_error', ''),
-            open_count=inbox.open_count,
-            pending_count=inbox.pending_count,
+            waiting_count=inbox.waiting_count,
+            quoted_count=inbox.quoted_count,
+            accepted_count=inbox.accepted_count,
         )
         return context
+
+    def render_inbox_after_quote_action(self):
+        conversation_id = self.conversation_id()
+        if not conversation_id:
+            raise Http404
+
+        selected = self.get_selected_conversation(conversation_id)
+        query = self.request.GET.copy()
+        query['conversation_id'] = conversation_id
+        query['filter'] = QuoteRequestStatus(selected.quote_status).value
+
+        if not self.request.htmx:
+            return redirect(f'{reverse("chats:inbox")}?{query.urlencode()}')
+
+        self.request.GET = query
+        return self.render_to_response(self.get_context_data())
 
 
 class PharmacyInboxView(PharmacyInboxMixin, TemplateView):
@@ -128,8 +160,8 @@ class SendMessageView(PharmacyInboxMixin, FormView):
         return self.render_to_response(self.get_context_data(form=MessageForm()))
 
 
-class SaveQuoteView(PharmacyInboxMixin, FormView):
-    form_class = QuoteForm
+class ChatSaveQuoteView(PharmacyInboxMixin, FormView):
+    form_class = ChatQuoteForm
     http_method_names = ('post',)
 
     def get_form_kwargs(self):
@@ -148,7 +180,7 @@ class SaveQuoteView(PharmacyInboxMixin, FormView):
 
     def form_valid(self, form):
         try:
-            save_quote(
+            submit_quote(
                 self.request.user.id,
                 self.kwargs['conversation_id'],
                 form.cleaned_params,
@@ -157,15 +189,7 @@ class SaveQuoteView(PharmacyInboxMixin, FormView):
             form.add_error(None, error)
             return self.form_invalid(form)
 
-        if not self.request.htmx:
-            return redirect(self.inbox_url())
-
-        return self.render_to_response(self.get_context_data())
-
-    def inbox_url(self):
-        query = self.request.GET.copy()
-        query['conversation_id'] = self.kwargs['conversation_id']
-        return f'{reverse("chats:inbox")}?{query.urlencode()}'
+        return self.render_inbox_after_quote_action()
 
 
 class WithdrawQuoteView(PharmacyInboxMixin, TemplateView):
@@ -180,18 +204,16 @@ class WithdrawQuoteView(PharmacyInboxMixin, TemplateView):
         except Error as error:
             quote_error = error.message
 
-        if not request.htmx:
-            if quote_error:
+        if quote_error:
+            if not request.htmx:
                 return self.render_to_response(
                     self.get_context_data(quote_error=quote_error),
                 )
-            query = request.GET.copy()
-            query['conversation_id'] = conversation_id
-            return redirect(f'{reverse("chats:inbox")}?{query.urlencode()}')
+            return self.render_to_response(
+                self.get_context_data(quote_error=quote_error),
+            )
 
-        return self.render_to_response(
-            self.get_context_data(quote_error=quote_error),
-        )
+        return self.render_inbox_after_quote_action()
 
 
 class CustomerInboxMixin(RoleRequiredMixin):

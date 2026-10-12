@@ -19,23 +19,13 @@ class QuoteCannotBeWithdrawnError(Error):
 
 
 @dataclass(frozen=True)
-class QuoteDeliveryNotRequestedError(Error):
-    message = 'Elegí una modalidad de entrega solicitada por el cliente.'
+class InvalidQuotePriceError(Error):
+    message = 'Ingresá un monto mayor a cero.'
 
 
 @dataclass(frozen=True)
-class InvalidQuoteAmountError(Error):
-    message = 'Los importes del presupuesto no son válidos.'
-
-
-@dataclass(frozen=True)
-class PickupDeliveryCostError(Error):
-    message = 'El retiro en farmacia no puede tener costo de envío.'
-
-
-@dataclass(frozen=True)
-class MissingPreparationTimeError(Error):
-    message = 'Indicá el plazo de preparación.'
+class InvalidDeliveryCostError(Error):
+    message = 'El envío a domicilio tiene que tener un costo mayor a cero.'
 
 
 @dataclass(frozen=True)
