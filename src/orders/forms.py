@@ -1,25 +1,41 @@
-from contextlib import suppress
+from dataclasses import dataclass
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import FileExtensionValidator
 
-from orders.models import DeliveryPreference, PreparationType, Urgency
+from accounts.models import PreparationTag
+from orders.models import DeliveryPreference, Urgency
+from shared.forms import TypedForm
 from shared.values import (
     Coordinates,
-    IncompleteLocationError,
     InvalidCoordinatesError,
     Location,
+    UnselectedSearchPlaceError,
 )
 
 PRESCRIPTION_EXTENSIONS = ('pdf', 'jpg', 'jpeg', 'png')
 PRESCRIPTION_MAX_SIZE = 10 * 1024 * 1024
 
 
-class NewOrderForm(forms.Form):
-    preparation_type = forms.ChoiceField(
+@dataclass(frozen=True)
+class NewOrderParams:
+    preparation_tag: PreparationTag
+    presentation: str
+    formula: str
+    prescription_file: UploadedFile | None
+    urgency: str
+    delivery_preferences: tuple[str, ...]
+    search_area: str
+    search_coordinates: Coordinates
+    note: str
+
+
+class NewOrderForm(TypedForm[NewOrderParams]):
+    preparation_tag = forms.ChoiceField(
         label='Tipo de preparación',
-        choices=PreparationType.choices,
+        choices=PreparationTag.choices,
     )
 
     presentation = forms.CharField(
@@ -72,12 +88,6 @@ class NewOrderForm(forms.Form):
 
     postal_code = forms.CharField(widget=forms.HiddenInput, required=False)
 
-    save_location = forms.BooleanField(
-        label='Guardar esta dirección en mi perfil',
-        required=False,
-        initial=True,
-    )
-
     note = forms.CharField(
         label='Notas para la farmacia',
         max_length=1000,
@@ -109,20 +119,23 @@ class NewOrderForm(forms.Form):
                 cleaned.get('longitude'),
             )
         except InvalidCoordinatesError:
-            self.add_error(
-                'search_area',
-                'Elegí una opción de la lista o usá tu ubicación.',
-            )
-            return cleaned
-        if cleaned.get('save_location'):
-            with suppress(IncompleteLocationError):
-                cleaned['profile_location'] = Location.create(
-                    cleaned.get('address'),
-                    cleaned.get('locality'),
-                    cleaned.get('postal_code'),
-                    cleaned['search_coordinates'],
-                )
+            self.add_error('search_area', UnselectedSearchPlaceError())
         return cleaned
+
+    @property
+    def cleaned_params(self) -> NewOrderParams:
+        data = self.cleaned_data
+        return NewOrderParams(
+            preparation_tag=PreparationTag(data['preparation_tag']),
+            presentation=data['presentation'],
+            formula=data['formula'],
+            prescription_file=data['prescription_file'],
+            urgency=data['urgency'],
+            delivery_preferences=tuple(data['delivery_preferences']),
+            search_area=data['search_area'],
+            search_coordinates=data['search_coordinates'],
+            note=data['note'],
+        )
 
     @classmethod
     def initial_from(cls, location: Location | None):

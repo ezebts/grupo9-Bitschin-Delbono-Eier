@@ -1,0 +1,85 @@
+{% load heroicons %}
+<fieldset class="fieldset" x-data="placeSearch" x-on:keydown.escape="close()" x-on:click.outside="close()">
+    <label class="fieldset-legend" for="{{ text.id_for_label }}">{{ text.label }}</label>
+    <div class="flex flex-wrap gap-2">
+        <div class="relative flex-[1_1_18rem]">
+            <label class="input w-full">
+                {% heroicon_outline "map-pin" size=20 class="opacity-70" %}
+                <input type="text"
+                       name="{{ text.html_name }}"
+                       id="{{ text.id_for_label }}"
+                       value="{{ text.value|default:'' }}"
+                       maxlength="200"
+                       autocomplete="off"
+                       placeholder="Barrio, o calle y altura"
+                       class="grow"
+                       role="combobox"
+                       aria-autocomplete="list"
+                       aria-controls="place-options"
+                       x-ref="text"
+                       x-bind:aria-expanded="places.length > 0"
+                       x-bind:aria-activedescendant="active >= 0 ? `place-option-${active}` : ''"
+                       x-on:input="clear(); close()"
+                       x-on:keydown.down.prevent="move(1)"
+                       x-on:keydown.up.prevent="move(-1)"
+                       x-on:keydown.enter.prevent="enter()">
+                <span x-show="loading" x-cloak class="loading loading-spinner loading-sm"></span>
+            </label>
+            <ul id="place-options" role="listbox" x-show="places.length" x-cloak class="absolute z-10 mt-1 w-full bg-base-100 border border-base-300 rounded-xl shadow-lg overflow-hidden">
+                <template x-for="(place, index) in places" x-bind:key="index">
+                    <li role="option" x-bind:id="`place-option-${index}`" x-bind:aria-selected="index === active">
+                        <button type="button"
+                                tabindex="-1"
+                                class="w-full text-left px-4 py-2.5"
+                                x-bind:class="index === active ? 'bg-[#E2F0EA] text-[#0A5141]' : ''"
+                                x-text="place.label"
+                                x-on:mouseenter="active = index"
+                                x-on:click="choose(place)"></button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+        <button type="button" class="btn bg-base-100 border border-base-300" x-on:click="search()" x-bind:disabled="loading">
+            {% heroicon_outline "magnifying-glass" size=18 %}
+            Buscar
+        </button>
+        <button type="button" class="btn bg-base-100 border border-base-300" x-on:click="locate()" x-bind:disabled="loading">
+            {% heroicon_outline "viewfinder-circle" size=18 %}
+            Usar mi ubicación
+        </button>
+    </div>
+    <input type="hidden" name="{{ latitude.html_name }}" value="{{ latitude.value|default_if_none:''|stringformat:'s' }}" x-ref="latitude">
+    <input type="hidden" name="{{ longitude.html_name }}" value="{{ longitude.value|default_if_none:''|stringformat:'s' }}" x-ref="longitude">
+    {% if hide_details %}
+        <input type="hidden" name="{{ address.html_name }}" value="{{ address.value|default:'' }}" x-ref="address">
+        <input type="hidden" name="{{ locality.html_name }}" value="{{ locality.value|default:'' }}" x-ref="locality">
+        <input type="hidden" name="{{ postal_code.html_name }}" value="{{ postal_code.value|default:'' }}" x-ref="postal_code">
+    {% endif %}
+    <p class="text-error text-sm" x-show="error" x-text="error" x-cloak></p>
+    {% for error in text.errors %}
+        <p class="text-error text-sm">{{ error }}</p>
+    {% endfor %}
+    {% if not hide_details %}
+        <div class="grid sm:grid-cols-2 gap-4 {% if radius %}lg:grid-cols-3{% endif %}">
+            <fieldset class="fieldset">
+                <label class="fieldset-legend" for="{{ locality.id_for_label }}">{{ locality.label }}</label>
+                <input class="input w-full" type="text" name="{{ locality.html_name }}" id="{{ locality.id_for_label }}" value="{{ locality.value|default:'' }}" maxlength="120" x-ref="locality">
+                {% for error in locality.errors %}
+                    <p class="text-error text-sm">{{ error }}</p>
+                {% endfor %}
+            </fieldset>
+            <fieldset class="fieldset">
+                <label class="fieldset-legend" for="{{ postal_code.id_for_label }}">{{ postal_code.label }}</label>
+                <input class="input w-full" type="text" name="{{ postal_code.html_name }}" id="{{ postal_code.id_for_label }}" value="{{ postal_code.value|default:'' }}" maxlength="8" x-ref="postal_code">
+                {% for error in postal_code.errors %}
+                    <p class="text-error text-sm">{{ error }}</p>
+                {% endfor %}
+            </fieldset>
+            {% if radius %}
+                {% include "shared/_field.html" with field=radius %}
+            {% endif %}
+        </div>
+    {% endif %}
+    <div x-ref="map" class="{{ map_class|default:'h-72 mt-2 rounded-xl border border-base-300 isolate' }}"></div>
+    <p class="label whitespace-normal">Tocá el mapa o arrastrá el marcador para ajustar el punto exacto.</p>
+</fieldset>

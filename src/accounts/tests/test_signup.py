@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 
-from accounts.models import ClientAccount, PharmacyAccount, User
+from accounts.models import ClientAccount, Pharmacy, PharmacyAccount, User
 
 pytestmark = pytest.mark.django_db
 
@@ -32,8 +32,11 @@ def test_email_signup_opens_an_account_for_the_selected_role(client, role):
     if role == User.Role.CUSTOMER:
         assert user.client_account.pk
         assert not PharmacyAccount.objects.exists()
+        assert not Pharmacy.objects.exists()
         return
-    assert user.pharmacy_account.pk
+    pharmacy = user.pharmacy_account.pharmacy
+    assert pharmacy.request_email == user.email
+    assert not pharmacy.visible
     assert not ClientAccount.objects.exists()
 
 

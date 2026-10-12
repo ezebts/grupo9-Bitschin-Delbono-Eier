@@ -1,0 +1,45 @@
+<div x-data="leaveOrder" x-on:click.window="ask($event)">
+    <dialog x-ref="dialog" class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-xl backdrop:bg-[#12201B]/40" style="width: min(28rem, calc(100% - 2rem)); height: fit-content; margin: auto" x-on:close="open = false" x-on:cancel.prevent="stay()">
+        <h2 class="text-xl font-bold">¿Abandonar la solicitud?</h2>
+        <p class="mt-2 text-sm text-[#51605A]">Si salís ahora, se borra lo que cargaste en este pedido.</p>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" class="btn btn-lg bg-base-100 border border-base-300" x-on:click="stay()">Seguir acá</button>
+            <button type="button" class="btn btn-primary btn-lg" x-on:click="leave()">Abandonar</button>
+        </div>
+    </dialog>
+    <form method="post" action="{% url 'orders:discard' %}" x-ref="form">
+        {% csrf_token %}
+        <input type="hidden" name="next" x-bind:value="next">
+    </form>
+</div>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('leaveOrder', () => ({
+            open: false,
+            next: '',
+            init() {
+                this.$watch('open', (value) => {
+                    const dialog = this.$refs.dialog
+                    if (value && !dialog.open) dialog.showModal()
+                    if (!value && dialog.open) dialog.close()
+                })
+            },
+            ask(event) {
+                if (this.open || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                const link = event.target.closest('a[href]')
+                if (!link || link.origin !== window.location.origin || link.closest('#djDebug')) return
+                const stay = ['{% url "orders:new" %}', '{% url "orders:choose" %}']
+                if (stay.includes(link.pathname)) return
+                event.preventDefault()
+                this.next = `${link.pathname}${link.search}`
+                this.open = true
+            },
+            stay() {
+                this.open = false
+            },
+            leave() {
+                this.$refs.form.submit()
+            },
+        }))
+    })
+</script>

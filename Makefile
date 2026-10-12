@@ -18,13 +18,13 @@ migrations:
 migrate:
 	docker compose -f development.yaml exec web uv run --no-sync python src/manage.py migrate
 
-# Host/CI pytest (uses app.settings.testing → SQLite; no Docker)
+# Host/CI pytest (uses app.settings.testing → SpatiaLite; no Docker)
 local-tests:
 	uv run pytest; \
 		code=$$?; \
 		[ $$code -eq 0 ] || [ $$code -eq 5 ]
 
-# Docker-based tests against the running web container
+# Docker-based tests (SpatiaLite inside the web image)
 tests:
 	docker compose -f development.yaml exec web \
 		env -u DJANGO_SETTINGS_MODULE \

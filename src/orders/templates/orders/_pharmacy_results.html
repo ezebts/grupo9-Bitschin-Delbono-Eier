@@ -1,0 +1,35 @@
+<section id="pharmacy-results" data-radius-km="{{ options.radius_km|stringformat:'s' }}" aria-labelledby="results-title" class="min-w-0 flex flex-col gap-3">
+    {{ markers|json_script:"pharmacy-markers" }}
+    <div class="flex flex-wrap justify-between items-center gap-2">
+        <h2 id="results-title" class="font-bold">{{ pharmacies|length }} resultados a menos de {{ options.radius_km }} km</h2>
+        <div class="flex gap-1">
+            <button type="button" class="btn btn-ghost text-primary" x-on:click="selectAll()">Seleccionar todas</button>
+            <button type="button" class="btn btn-ghost" x-on:click="selectNone()">Ninguna</button>
+        </div>
+    </div>
+    <div class="flex flex-col gap-2.5 max-h-[690px] overflow-y-auto">
+        {% for pharmacy in pharmacies %}
+            <label class="flex gap-3.5 items-start p-4 rounded-2xl cursor-pointer border {% if pharmacy.id in chosen %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border-base-300 bg-base-100{% endif %}">
+                <input class="checkbox checkbox-primary mt-0.5" type="checkbox" name="pharmacy" value="{{ pharmacy.id }}" {% if pharmacy.id in chosen %}checked{% endif %} x-on:change="paint()">
+                <span class="flex-1 min-w-0 flex flex-col gap-1.5">
+                    <span class="flex justify-between gap-3 items-baseline">
+                        <span class="font-bold text-[17px]">{{ pharmacy.name }}</span>
+                        <span class="text-sm font-semibold text-[#3F4B47] whitespace-nowrap">{{ pharmacy.distance_km|floatformat:1 }} km</span>
+                    </span>
+                    <span class="flex flex-wrap items-center gap-2 text-sm text-[#51605A]">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-bold {% if pharmacy.is_laboratory %}bg-[#E7EEFD] text-[#1E4FC2]{% else %}bg-[#E2F0EA] text-[#0A5141]{% endif %}">{{ pharmacy.kind_label }}</span>
+                        <span>{{ pharmacy.address }}</span>
+                    </span>
+                    <span class="flex flex-wrap gap-1.5 items-center text-[13px]">
+                        <span class="font-semibold text-[#0A5141]">{{ pharmacy.hours }}</span>
+                        {% for tag in pharmacy.tags %}
+                            <span class="px-2 py-0.5 rounded-full bg-base-200 text-[#3F4B47]">{{ tag }}</span>
+                        {% endfor %}
+                    </span>
+                </span>
+            </label>
+        {% empty %}
+            <p class="text-sm text-[#51605A]">No hay locales visibles dentro de este radio. Ampliá la distancia o cambiá los filtros.</p>
+        {% endfor %}
+    </div>
+</section>

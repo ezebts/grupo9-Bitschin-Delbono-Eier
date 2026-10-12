@@ -2,7 +2,7 @@
 <div class="group flex flex-wrap items-center gap-x-3 gap-y-2">
     <span class="min-w-28 flex-1 font-semibold">{{ day }}</span>
     <label class="inline-flex items-center gap-2 shrink-0 cursor-pointer">
-        {% render_field closed class="checkbox checkbox-primary" %}
+        <input type="checkbox" class="checkbox checkbox-primary" {% if not opens.value %}checked{% endif %} onchange="if (this.checked) this.closest('.group').querySelectorAll('input[type=time]').forEach((input) => { input.value = '' })">
         <span>Cerrado</span>
     </label>
     <div class="flex w-full items-center gap-2 group-has-checked:hidden">

@@ -15,7 +15,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libmagic1
+    && apt-get install -y --no-install-recommends \
+        binutils \
+        gdal-bin \
+        libgdal-dev \
+        libgeos-dev \
+        libmagic1 \
+        libproj-dev \
+        libsqlite3-mod-spatialite
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.22 /uv /uvx /bin/
 

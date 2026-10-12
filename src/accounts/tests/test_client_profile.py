@@ -2,7 +2,6 @@ from dataclasses import replace
 
 import pytest
 
-from accounts.commands.update_client_location import update_client_location
 from accounts.commands.update_client_profile import (
     UpdateClientProfileParams,
     update_client_profile,
@@ -19,7 +18,12 @@ def client_profile_params():
         first_name='Lucía',
         last_name='Fernández',
         phone=PhoneNumber.AR('11 5555-4444'),
-        location=Location.create('Av. Santa Fe 3820', 'Palermo', '1425'),
+        location=Location.create(
+            'Av. Santa Fe 3820',
+            'Palermo',
+            '1425',
+            Coordinates.create(-34.5842582, -58.4174826),
+        ),
         search_radius=SearchRadius.KM3,
         health_insurance_number='OSDE 123',
         mail_preferences=MailPreferences(
@@ -78,17 +82,24 @@ def test_client_clears_health_insurance(client_account, client_profile_params):
     assert client_account.health_insurance_number == ''
 
 
-def test_client_saves_location_from_a_new_order(client_account, client_profile_params):
+def test_client_clears_optional_profile_data(client_account, client_profile_params):
     update_client_profile(client_account.user_id, client_profile_params)
-    location = Location.create(
-        'Avenida Santa Fe 3820',
-        'Palermo',
-        'C1425BHN',
-        Coordinates(-34.5842582, -58.4174826),
+    update_client_profile(
+        client_account.user_id,
+        replace(
+            client_profile_params,
+            phone=None,
+            location=None,
+            search_radius=None,
+        ),
     )
 
-    update_client_location(client_account.user_id, location)
-
     client_account.refresh_from_db()
-    assert client_account.location == location
-    assert client_account.search_radius == client_profile_params.search_radius
+    user = client_account.user
+    user.refresh_from_db()
+
+    assert user.first_name == client_profile_params.first_name
+    assert user.last_name == client_profile_params.last_name
+    assert client_account.phone is None
+    assert client_account.location is None
+    assert client_account.search_radius is None

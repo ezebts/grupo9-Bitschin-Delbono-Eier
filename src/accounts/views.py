@@ -1,15 +1,22 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
+from accounts.commands.set_pharmacy_visibility import set_pharmacy_visibility
 from accounts.commands.update_client_profile import update_client_profile
 from accounts.commands.update_pharmacy_profile import update_pharmacy_profile
+from accounts.exceptions import (
+    PharmacyCantBecomeVisible,
+    PharmacyCantClearSearchData,
+)
 from accounts.forms.client_profile import ClientProfileForm
 from accounts.forms.pharmacy_profile import PharmacyProfileForm
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.pharmacy_profile import get_account_pharmacy_profile
+from shared.views import RoleRequiredMixin
 
 
 class ClientProfileView(LoginRequiredMixin, FormView):
@@ -50,9 +57,41 @@ class PharmacyProfileView(LoginRequiredMixin, FormView):
         return context
 
     def form_valid(self, form):
-        update_pharmacy_profile(self.request.user.id, form.cleaned_params)
+        try:
+            update_pharmacy_profile(self.request.user.id, form.cleaned_params)
+        except PharmacyCantClearSearchData as error:
+            form.add_error(None, error)
+            return self.form_invalid(form)
+
         messages.success(self.request, 'Guardamos los cambios.')
         return super().form_valid(form)
+
+
+class PharmacyVisibilityView(RoleRequiredMixin, View):
+    http_method_names = ('post',)
+
+    def allows(self, user):
+        return user.is_pharmacy
+
+    def post(self, request):
+        visible = 'visible' in request.POST
+        error = None
+        try:
+            set_pharmacy_visibility(request.user.id, visible=visible)
+        except PharmacyCantBecomeVisible as exc:
+            visible = False
+            error = exc.message
+
+        if request.htmx:
+            return render(
+                request,
+                'accounts/_visibility.html',
+                {'visible': visible, 'error': error},
+            )
+
+        if error:
+            messages.error(request, error)
+        return redirect('profile')
 
 
 class ProfileView(LoginRequiredMixin, View):

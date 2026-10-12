@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from accounts.models import ClientAccount, PharmacyAccount, User
+from accounts.models import ClientAccount, Pharmacy, PharmacyAccount, User
 
 
 @transaction.atomic
@@ -13,4 +13,7 @@ def signup(user: User, role: str):
         ClientAccount.objects.create(user=user)
         return
 
-    PharmacyAccount.objects.create(user=user)
+    PharmacyAccount.objects.create(
+        user=user,
+        pharmacy=Pharmacy.objects.create(request_email=user.email),
+    )

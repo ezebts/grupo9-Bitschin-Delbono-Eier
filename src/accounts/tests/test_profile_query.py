@@ -1,7 +1,7 @@
 import pytest
 from allauth.socialaccount.models import SocialAccount
 
-from accounts.models import ClientAccount, PharmacyAccount, User
+from accounts.models import ClientAccount, Pharmacy, PharmacyAccount, User
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.pharmacy_profile import get_account_pharmacy_profile
 
@@ -37,11 +37,18 @@ def test_client_profile_includes_the_account_and_a_google_link(user):
 
 def test_pharmacy_profile_is_not_linked_when_google_is_missing(user):
     user.role = User.Role.PHARMACY
-    user.save(update_fields=['role'])
-    PharmacyAccount.objects.create(user=user, trade_name='Farmacia Galénica')
+    user.first_name = 'Ana'
+    user.last_name = 'Pérez'
+    user.save(update_fields=['role', 'first_name', 'last_name'])
+    PharmacyAccount.objects.create(
+        user=user,
+        pharmacy=Pharmacy.objects.create(trade_name='Farmacia Galénica'),
+    )
 
     profile = get_account_pharmacy_profile(user.id)
 
     assert profile.email == 'ana@example.com'
+    assert profile.first_name == 'Ana'
+    assert profile.last_name == 'Pérez'
     assert profile.trade_name == 'Farmacia Galénica'
     assert not profile.google_linked

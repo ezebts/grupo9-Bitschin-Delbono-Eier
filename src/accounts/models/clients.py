@@ -71,11 +71,11 @@ class ClientAccount(models.Model):
         return from_dict(MailPreferences, self._mail_preferences)
 
     def update_personal_details(self, phone, health_insurance_number):
-        self._phone = phone.number
+        self._phone = phone.number if phone else ''
         self.health_insurance_number = health_insurance_number
 
     def update_search_preferences(self, location, search_radius):
-        self._location = asdict(location)
+        self._location = asdict(location) if location else {}
         self.search_radius = search_radius
 
     def update_mail_preferences(self, mail_preferences):

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load heroicons static %}
+
+{% block head_title %}Elegir farmacias{% endblock head_title %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'shared/leaflet/leaflet.css' %}">
+    <script defer src="{% static 'shared/leaflet/leaflet.js' %}"></script>
+{% endblock extra_head %}
+
+{% block content %}
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-8 pb-28 space-y-6">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="space-y-1.5">
+                    <h1 class="text-4xl font-bold tracking-tight">Elegí a quién pedir presupuesto</h1>
+                    <p class="text-base-content/70">Marcá farmacias y laboratorios en la lista o en el mapa. Podés elegir varios.</p>
+                </div>
+                <ol aria-label="Pasos de la solicitud" class="flex flex-wrap gap-x-7 gap-y-2">
+                    <li class="flex items-center gap-2.5 font-semibold text-base-content/70">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#E2F0EA] text-[#0A5141]">{% heroicon_outline "check" size=16 %}</span>
+                        Tu preparación
+                    </li>
+                    <li aria-current="step" class="flex items-center gap-2.5 font-bold text-[#0A5141]">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-content text-sm">2</span>
+                        Elegir farmacias
+                    </li>
+                    <li class="flex items-center gap-2.5 font-semibold text-base-content/70">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full border-[1.5px] border-[#B7C4BD] text-sm">3</span>
+                        Enviar solicitud
+                    </li>
+                </ol>
+            </div>
+            {% include "shared/_messages.html" %}
+
+            <form method="get" action="{% url 'orders:choose' %}" hx-get="{% url 'orders:choose' %}" hx-target="#pharmacy-results" hx-swap="outerHTML" hx-trigger="change" hx-push-url="true" hx-sync="this:replace" class="flex flex-wrap gap-2 items-center" aria-label="Filtros de búsqueda">
+                <input class="input rounded-full h-11 min-h-11 min-w-0 max-w-72 flex-[1_1_11rem] text-[15px]" type="search" value="{{ order.search_area }}" aria-label="Zona de búsqueda" readonly>
+                <label class="sr-only" for="search-radius">Distancia máxima</label>
+                <select id="search-radius" name="radius" class="select rounded-full h-11 min-h-11 w-auto! shrink-0 font-semibold text-[15px]">
+                    {% for option in radius_options %}
+                        <option value="{{ option.value }}" {% if options.radius_km == option.value %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+                <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
+                    <input class="sr-only" type="checkbox" name="kinds" value="pharmacy" {% if options.include_pharmacies %}checked{% endif %}>
+                    Farmacias
+                </label>
+                <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
+                    <input class="sr-only" type="checkbox" name="kinds" value="lab" {% if options.include_labs %}checked{% endif %}>
+                    Laboratorios
+                </label>
+                <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
+                    <input class="sr-only" type="checkbox" name="open" value="1" {% if options.open_now %}checked{% endif %}>
+                    Abiertas ahora
+                </label>
+                <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
+                    <input class="sr-only" type="checkbox" name="delivery" value="1" {% if options.home_delivery %}checked{% endif %}>
+                    Con envío a domicilio
+                </label>
+                <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
+                    <input class="sr-only" type="checkbox" name="preparation" value="1" {% if options.preparation %}checked{% endif %}>
+                    Tipo de preparación
+                </label>
+            </form>
+
+            <form method="post" action="{{ request.get_full_path }}" class="space-y-6" x-data="pharmacyPicker">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-5 items-stretch">
+                    {% include "orders/_pharmacy_results.html" %}
+                    <section aria-label="Mapa de resultados" class="relative z-0 min-w-0 rounded-3xl overflow-hidden border border-base-300">
+                        <div x-ref="map" class="h-[740px]"></div>
+                    </section>
+                </div>
+                <div class="sticky bottom-0 z-10 -mx-6 px-6 py-4 bg-base-200 border-t border-base-300 flex flex-wrap gap-3 items-center justify-between">
+                    <div class="min-w-0">
+                        <p class="font-bold text-[17px]"><span x-text="selected">{{ chosen|length }}</span> seleccionadas</p>
+                        <p class="text-sm text-[#51605A]">{{ order.formula }} · {{ order.presentation }}{% if order.has_prescription %} · receta adjunta{% endif %}</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <span class="text-sm text-[#3F4B47]">Cada farmacia elegida recibe un mail</span>
+                        <a href="{% url 'orders:new' %}?volver=1" class="btn btn-lg bg-base-100 border border-base-300">Volver</a>
+                        <button type="submit" class="btn btn-primary btn-lg">Pedir presupuesto</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+    {% if request.session.new_order %}
+        {% include "orders/_leave_order.html" %}
+    {% endif %}
+{% endblock content %}
+
+{% block extra_body %}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('pharmacyPicker', () => ({
+                markers: [],
+                selected: {{ chosen|length }},
+                kept: [],
+                init() {
+                    const origin = [{{ order.latitude|stringformat:"s" }}, {{ order.longitude|stringformat:"s" }}]
+                    this.map = L.map(this.$refs.map, { scrollWheelZoom: false }).setView(origin, 14)
+                    this.map.invalidateSize()
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        referrerPolicy: 'strict-origin-when-cross-origin',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    }).addTo(this.map)
+                    this.circle = L.circle(origin, {
+                        radius: {{ options.radius_km|stringformat:"s" }} * 1000,
+                        color: '#0E6B55',
+                        weight: 2,
+                        dashArray: '6 6',
+                        fillOpacity: 0.06,
+                    }).addTo(this.map)
+                    L.circleMarker(origin, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#1E4FC2', fillOpacity: 1 }).addTo(this.map)
+                    this.drawMarkers()
+                    this.beforeSwap = (event) => {
+                        if (event.detail.target.id !== 'pharmacy-results') return
+                        this.kept = this.boxes().filter((box) => box.checked).map((box) => box.value)
+                    }
+                    this.afterSwap = (event) => {
+                        if (event.detail.target.id !== 'pharmacy-results') return
+                        const results = document.getElementById('pharmacy-results')
+                        Alpine.initTree(results)
+                        this.boxes().forEach((box) => {
+                            if (this.kept.includes(box.value)) box.checked = true
+                        })
+                        this.circle.setRadius(Number(results.dataset.radiusKm) * 1000)
+                        this.drawMarkers()
+                        this.$root.action = `${location.pathname}${location.search}`
+                    }
+                    document.addEventListener('htmx:beforeSwap', this.beforeSwap)
+                    document.addEventListener('htmx:afterSwap', this.afterSwap)
+                },
+                drawMarkers() {
+                    this.markers.forEach(({ marker }) => marker.remove())
+                    const pharmacies = JSON.parse(document.getElementById('pharmacy-markers').textContent)
+                    this.markers = pharmacies.map((pharmacy) => {
+                        const marker = L.marker([pharmacy.latitude, pharmacy.longitude], { icon: this.icon(pharmacy, false) }).addTo(this.map)
+                        marker.on('click', () => this.toggle(pharmacy.id))
+                        return { pharmacy, marker }
+                    })
+                    this.paint()
+                },
+                boxes() {
+                    return [...this.$root.querySelectorAll('input[name=pharmacy]')]
+                },
+                selectAll() {
+                    this.boxes().forEach((box) => { box.checked = true })
+                    this.paint()
+                },
+                selectNone() {
+                    this.boxes().forEach((box) => { box.checked = false })
+                    this.paint()
+                },
+                toggle(id) {
+                    const box = this.boxes().find((item) => Number(item.value) === id)
+                    if (!box) return
+                    box.checked = !box.checked
+                    this.paint()
+                },
+                paint() {
+                    const selected = new Set(this.boxes().filter((box) => box.checked).map((box) => Number(box.value)))
+                    this.selected = selected.size
+                    this.markers.forEach(({ pharmacy, marker }) => {
+                        marker.setIcon(this.icon(pharmacy, selected.has(pharmacy.id)))
+                    })
+                },
+                icon(pharmacy, selected) {
+                    const background = selected ? '#0E6B55' : '#FFFFFF'
+                    const color = selected ? '#FFFFFF' : '#12201B'
+                    const border = selected ? '#0E6B55' : '#C9D2CD'
+                    return L.divIcon({
+                        className: '',
+                        iconSize: null,
+                        html: `<span style="display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1.5px solid ${border};border-radius:999px;background:${background};color:${color};font-weight:700;font-size:13px;white-space:nowrap;box-shadow:0 3px 10px rgba(18,32,27,.2)">${pharmacy.name}</span>`,
+                    })
+                },
+            }))
+        })
+    </script>
+{% endblock extra_body %}

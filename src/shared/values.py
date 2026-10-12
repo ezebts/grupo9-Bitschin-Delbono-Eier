@@ -78,6 +78,11 @@ class IncompleteLocationError(Error):
 
 
 @dataclass(frozen=True)
+class UnselectedSearchPlaceError(Error):
+    message = _('Elegí una opción de la lista o usá tu ubicación.')
+
+
+@dataclass(frozen=True)
 class Location:
     address: str
     locality: str
@@ -108,6 +113,11 @@ class Location:
 
         return cls(address, locality, postal_code, coordinates)
 
+    def format(self):
+        if self.address and self.locality:
+            return f'{self.address}, {self.locality}'
+        return self.address or self.locality
+
 
 @dataclass(frozen=True)
 class InvalidTimeSlotError(Error):
@@ -122,6 +132,7 @@ class TimeSlot:
 
     @classmethod
     def create(cls, name, *, opens, closes):
+
         if opens is None and closes is None:
             return cls(name, opens=None, closes=None)
 
@@ -133,6 +144,11 @@ class TimeSlot:
     @property
     def closed(self):
         return self.opens is None
+
+    def format(self):
+        if self.closed:
+            return 'Cerrado'
+        return f'{self.opens:%H:%M}-{self.closes:%H:%M}'
 
 
 @dataclass(frozen=True)

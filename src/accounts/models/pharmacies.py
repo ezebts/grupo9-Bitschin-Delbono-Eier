@@ -1,13 +1,28 @@
 import re
 from dataclasses import dataclass
-from enum import Enum
+from typing import Self
 
+from django.contrib.gis.db.models import PointField
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
 from django.db import models
+from django.db.models import CharField
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast
 
-from accounts.exceptions import InvalidCuitError, InvalidDeliveryTermsError
+from accounts.exceptions import (
+    DeliveryCostWithoutHomeDeliveryError,
+    InvalidCuitError,
+    InvalidDeliveryTermsError,
+    PharmacyCantBecomeVisible,
+    PharmacyCantClearSearchData,
+)
 from accounts.models.base import User
 from shared.dataclasses import asdict, from_dict
-from shared.values import Location, Money, PhoneNumber, TimeSlot
+from shared.values import Coordinates, Location, Money, PhoneNumber, TimeSlot
+
+GEO_WGS84_LAT_LONG = 4326
 
 
 class PharmacyKind(models.TextChoices):
@@ -67,78 +82,105 @@ class Cuit:
 
 @dataclass(frozen=True)
 class OpeningHours:
-    slots: tuple[TimeSlot, ...]
+    slot: dict[str, TimeSlot]
     weekday = 'weekday'
     saturday = 'saturday'
     sunday = 'sunday'
     days = (weekday, saturday, sunday)
+    saturday_index = 5
+    sunday_index = 6
 
+    def __init__(self, slots=None, *, slot=None):
+        if slot is None:
+            slot = {item.name: item for item in slots}
+        object.__setattr__(self, 'slot', slot)
 
-class DeliveryRadius(int, Enum):
-    KM3 = 3
-    KM5 = 5
-    KM10 = 10
+    @classmethod
+    def create(cls, slots):
+        return cls(tuple(slots))
+
+    @property
+    def slots(self):
+        return tuple(self.slot.values())
+
+    @classmethod
+    def day_name(cls, moment):
+        if moment.weekday() == cls.saturday_index:
+            return cls.saturday
+        if moment.weekday() == cls.sunday_index:
+            return cls.sunday
+        return cls.weekday
+
+    def slot_at(self, moment):
+        return self.slot.get(self.day_name(moment))
+
+    def format(self, moment):
+        slot = self.slot_at(moment)
+        if slot is None:
+            return 'Cerrado'
+        return slot.format()
 
 
 @dataclass(frozen=True)
 class DeliveryTerms:
     pickup: bool
-    home_delivery: bool
-    radius: DeliveryRadius | None
+    home_delivery: bool | None
     base_cost: Money | None
 
     @classmethod
-    def create(cls, *, pickup, home_delivery, radius, base_cost):
-        if not pickup and not home_delivery:
-            raise InvalidDeliveryTermsError
-
-        if not home_delivery:
-            return cls(
-                pickup=pickup,
-                home_delivery=False,
-                radius=None,
-                base_cost=None,
-            )
-
-        try:
-            distance = DeliveryRadius(radius)
-        except ValueError:
-            distance = None
-
-        if distance is None:
-            raise InvalidDeliveryTermsError
-
+    def create(cls, *, pickup, home_delivery, base_cost):
         if base_cost is not None and not isinstance(base_cost, Money):
             raise InvalidDeliveryTermsError
 
-        return cls(
-            pickup=pickup,
-            home_delivery=True,
-            radius=distance,
-            base_cost=base_cost,
+        if home_delivery is None:
+            return cls(pickup=pickup, home_delivery=None, base_cost=None)
+
+        if not home_delivery:
+            if base_cost is not None:
+                raise DeliveryCostWithoutHomeDeliveryError
+            if not pickup:
+                raise InvalidDeliveryTermsError
+            return cls(pickup=pickup, home_delivery=False, base_cost=None)
+
+        return cls(pickup=pickup, home_delivery=True, base_cost=base_cost)
+
+
+class PharmacyQuerySet(models.QuerySet):
+    def within(self, origin: Coordinates, radius_km: int) -> Self:
+        origin = Point(origin.longitude, origin.latitude, srid=GEO_WGS84_LAT_LONG)
+        return (
+            self.filter(coordinates__distance_lte=(origin, D(km=radius_km)))
+            .annotate(distance=Distance('coordinates', origin))
+            .order_by('distance')
         )
 
+    def open_at(self, moment):
+        day = OpeningHours.day_name(moment)
+        clock = f'{moment:%H:%M}'
+        return self.annotate(
+            opens_at=Cast(
+                KeyTextTransform(
+                    'opens',
+                    KeyTextTransform(day, KeyTextTransform('slot', '_opening_hours')),
+                ),
+                CharField(),
+            ),
+            closes_at=Cast(
+                KeyTextTransform(
+                    'closes',
+                    KeyTextTransform(day, KeyTextTransform('slot', '_opening_hours')),
+                ),
+                CharField(),
+            ),
+        ).filter(opens_at__lte=clock, closes_at__gte=clock)
 
-class PharmacyAccount(models.Model):
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='pharmacy_account',
-    )
 
-    visible = models.BooleanField(default=True)
+class Pharmacy(models.Model):
+    visible = models.BooleanField(default=False)
 
     kind = models.CharField(max_length=32, choices=PharmacyKind.choices, blank=True)
 
     trade_name = models.CharField(max_length=150, blank=True)
-
-    legal_name = models.CharField(max_length=150, blank=True)
-
-    _cuit = models.CharField(max_length=11, blank=True, db_column='cuit')
-
-    technical_director = models.CharField(max_length=150, blank=True)
-
-    license = models.CharField(max_length=40, blank=True)
 
     request_email = models.EmailField(blank=True)
 
@@ -147,6 +189,8 @@ class PharmacyAccount(models.Model):
     website = models.URLField(blank=True)
 
     _location = models.JSONField(default=dict, blank=True, db_column='location')
+
+    coordinates = PointField(srid=GEO_WGS84_LAT_LONG, null=True, blank=True)
 
     _opening_hours = models.JSONField(
         default=dict,
@@ -166,14 +210,10 @@ class PharmacyAccount(models.Model):
         db_column='preparation_tags',
     )
 
-    def __str__(self):
-        return self.trade_name or self.user.email
+    objects = PharmacyQuerySet.as_manager()
 
-    @property
-    def cuit(self):
-        if not self._cuit:
-            return None
-        return Cuit(self._cuit)
+    def __str__(self):
+        return self.trade_name or f'Farmacia {self.pk}'
 
     @property
     def phone(self):
@@ -186,7 +226,7 @@ class PharmacyAccount(models.Model):
         return from_dict(Location, self._location)
 
     @property
-    def opening_hours(self) -> OpeningHours:
+    def opening_hours(self) -> OpeningHours | None:
         return from_dict(OpeningHours, self._opening_hours)
 
     @property
@@ -197,37 +237,114 @@ class PharmacyAccount(models.Model):
     def preparation_tags(self) -> set[PreparationTag]:
         return {PreparationTag(tag) for tag in self._preparation_tags}
 
-    def update_establishment(  # noqa: PLR0913, PLR0917
+    @property
+    def is_laboratory(self):
+        return self.kind == PharmacyKind.PREPARATION_LAB
+
+    def update_establishment(self, kind, trade_name):
+
+        if self.visible and not (trade_name or '').strip():
+            raise PharmacyCantClearSearchData
+
+        self.kind = kind
+        self.trade_name = trade_name
+
+    def set_visibility(self, visible):
+        if not visible:
+            self.visible = False
+            return
+
+        location = self.location
+        if (
+            not self.trade_name.strip()
+            or not self.request_email.strip()
+            or location is None
+            or location.coordinates is None
+            or self.coordinates is None
+        ):
+            raise PharmacyCantBecomeVisible
+
+        self.visible = True
+
+    def update_contact_info(self, request_email, phone, website):
+
+        if self.visible and not (request_email or '').strip():
+            raise PharmacyCantClearSearchData
+
+        self.request_email = request_email
+        self._phone = phone.number if phone else ''
+        self.website = website
+
+    def update_location(self, location):
+
+        if self.visible and (location is None or location.coordinates is None):
+            raise PharmacyCantClearSearchData
+
+        if location is None:
+            self._location = {}
+            self.coordinates = None
+            return
+
+        self._location = asdict(location)
+
+        if location.coordinates is None:
+            self.coordinates = None
+            return
+
+        self.coordinates = Point(
+            location.coordinates.longitude,
+            location.coordinates.latitude,
+            srid=GEO_WGS84_LAT_LONG,
+        )
+
+    def update_opening_hours(self, opening_hours):
+        self._opening_hours = asdict(opening_hours) if opening_hours else {}
+
+    def update_delivery_terms(self, delivery_terms):
+        self._delivery_terms = asdict(delivery_terms) if delivery_terms else {}
+
+    def update_preparation_tags(self, preparation_tags: set[PreparationTag]):
+        self._preparation_tags = sorted(tag.value for tag in preparation_tags)
+
+
+class PharmacyAccount(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='pharmacy_account',
+    )
+
+    pharmacy = models.ForeignKey(
+        Pharmacy,
+        on_delete=models.PROTECT,
+        related_name='accounts',
+    )
+
+    legal_name = models.CharField(max_length=150, blank=True)
+
+    _cuit = models.CharField(max_length=11, blank=True, db_column='cuit')
+
+    technical_director = models.CharField(max_length=150, blank=True)
+
+    license = models.CharField(max_length=40, blank=True)
+
+    def __str__(self):
+        return self.pharmacy.trade_name or self.user.email
+
+    @property
+    def cuit(self):
+        if not self._cuit:
+            return None
+        return Cuit(self._cuit)
+
+    def update_legal_info(
         self,
-        visible,
-        kind,
-        trade_name,
         legal_name,
         cuit,
         technical_director,
         license,  # noqa: A002
     ):
-        self.visible = visible
-        self.kind = kind
-        self.trade_name = trade_name
         self.legal_name = legal_name
-        self._cuit = cuit.number
+        self._cuit = cuit.number if cuit else ''
         self.technical_director = technical_director
         self.license = license
-
-    def update_contact(self, request_email, phone, website):
-        self.request_email = request_email
-        self._phone = phone.number
-        self.website = website
-
-    def update_location(self, location):
-        self._location = asdict(location)
-
-    def update_opening_hours(self, opening_hours):
-        self._opening_hours = asdict(opening_hours)
-
-    def update_delivery_terms(self, delivery_terms):
-        self._delivery_terms = asdict(delivery_terms)
-
-    def update_preparation_tags(self, preparation_tags: set[PreparationTag]):
-        self._preparation_tags = sorted(tag.value for tag in preparation_tags)

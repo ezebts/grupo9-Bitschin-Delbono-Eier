@@ -1,0 +1,28 @@
+{% load heroicons %}
+<form id="pharmacy-visibility"
+      method="post"
+      action="{% url 'pharmacy_visibility' %}"
+      hx-post="{% url 'pharmacy_visibility' %}"
+      hx-target="#pharmacy-visibility"
+      hx-swap="outerHTML"
+      class="inline-flex flex-col"
+      x-data="{ visible: {% if visible %}true{% else %}false{% endif %} }">
+    {% csrf_token %}
+    <label class="inline-flex items-center gap-3 min-h-12 px-4 rounded-xl font-bold cursor-pointer"
+           x-bind:class="visible ? 'bg-[#E2F0EA] text-[#0A5141]' : 'bg-[#F8E7C3] text-[#A16207]'">
+        <input type="checkbox"
+               name="visible"
+               class="checkbox checkbox-primary"
+               x-model="visible"
+               {% if visible %}checked{% endif %}
+               onchange="this.form.requestSubmit()">
+        Visible en la búsqueda
+    </label>
+    <p class="w-0 min-w-full mt-1 pl-3 flex items-start gap-1 text-xs font-medium leading-snug text-[#A16207]" x-show="!visible" x-cloak>
+        <span class="shrink-0">{% heroicon_outline "exclamation-triangle" size=14 %}</span>
+        <span>Los clientes no pueden encontrarte.</span>
+    </p>
+    {% if error %}
+        <p class="w-0 min-w-full mt-1 pl-3 text-xs text-error">{{ error }}</p>
+    {% endif %}
+</form>

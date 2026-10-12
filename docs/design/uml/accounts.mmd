@@ -1,27 +1,28 @@
 classDiagram
     User "1" --> "0..1" ClientAccount
     User "1" --> "0..1" PharmacyAccount
+    PharmacyAccount "0..*" --> "1" Pharmacy
     User *-- Role
     ClientAccount *-- PhoneNumber
     ClientAccount *-- Location
     ClientAccount *-- SearchRadius
     ClientAccount *-- MailPreferences
     Location *-- Coordinates
-    PharmacyAccount *-- PharmacyKind
-    PharmacyAccount *-- Cuit
-    PharmacyAccount *-- PhoneNumber
-    PharmacyAccount *-- Location
-    PharmacyAccount *-- OpeningHours
+    Pharmacy *-- PharmacyKind
+    Pharmacy *-- PhoneNumber
+    Pharmacy *-- Location
+    Pharmacy *-- OpeningHours
     OpeningHours *-- TimeSlot
-    PharmacyAccount *-- DeliveryTerms
-    PharmacyAccount *-- PreparationTag
-    DeliveryTerms *-- DeliveryRadius
+    Pharmacy *-- DeliveryTerms
+    Pharmacy *-- PreparationTag
+    PharmacyAccount *-- Cuit
     DeliveryTerms *-- Money
 
     class User {
         email: str
         firstName: str
         lastName: str
+        timezone: ZoneInfo
         +getInitials() str
     }
     class ClientAccount {
@@ -31,20 +32,24 @@ classDiagram
         +updateSearchPreferences(location, searchRadius)
         +updateMailPreferences(mailPreferences)
     }
-    class PharmacyAccount {
+    class Pharmacy {
         tradeName: str
-        legalName: str
-        technicalDirector: str
-        license: str
         requestEmail: str
         website: str
         visible: bool
-        +updateEstablishment(visible, kind, tradeName, legalName, cuit, technicalDirector, license)
-        +updateContact(requestEmail, phone, website)
+        +updateEstablishment(kind, tradeName)
+        +setVisibility(visible)
+        +updateContactInfo(requestEmail, phone, website)
         +updateLocation(location)
         +updateOpeningHours(openingHours)
         +updateDeliveryTerms(deliveryTerms)
         +updatePreparationTags(preparationTags)
+    }
+    class PharmacyAccount {
+        legalName: str
+        technicalDirector: str
+        license: str
+        +updateLegalInfo(legalName, cuit, technicalDirector, license)
     }
     class Role {
         <<enum>>
@@ -97,20 +102,14 @@ classDiagram
     class OpeningHours {
         <<value>>
         slots: TimeSlot[]
-    }
-    class DeliveryRadius {
-        <<enum>>
-        KM3 = 3
-        KM5 = 5
-        KM10 = 10
+        +create(slots) OpeningHours$
     }
     class DeliveryTerms {
         <<value>>
         pickup: bool
-        homeDelivery: bool
-        radius: DeliveryRadius
+        homeDelivery: bool | None
         baseCost: Money
-        +create(pickup, homeDelivery, radius, baseCost) DeliveryTerms$
+        +create(pickup, homeDelivery, baseCost) DeliveryTerms$
     }
     class Money {
         <<value>>
@@ -146,10 +145,10 @@ classDiagram
     classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
     class User:::model
     class ClientAccount:::model
+    class Pharmacy:::model
     class PharmacyAccount:::model
     class Role:::model
     class SearchRadius:::model
-    class DeliveryRadius:::model
     class PhoneNumber:::model
     class Location:::model
     class Coordinates:::model

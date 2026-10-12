@@ -14,19 +14,20 @@ from shared.values import Location, PhoneNumber
 
 @dataclass(frozen=True)
 class UpdatePharmacyProfileParams:
-    visible: bool
+    first_name: str
+    last_name: str
     kind: str
     trade_name: str
     legal_name: str
-    cuit: Cuit
+    cuit: Cuit | None
     technical_director: str
     license: str
     request_email: str
-    phone: PhoneNumber
+    phone: PhoneNumber | None
     website: str
-    location: Location
-    opening_hours: OpeningHours
-    delivery_terms: DeliveryTerms
+    location: Location | None
+    opening_hours: OpeningHours | None
+    delivery_terms: DeliveryTerms | None
     preparation_tags: set[PreparationTag]
 
 
@@ -34,26 +35,27 @@ class UpdatePharmacyProfileParams:
 def update_pharmacy_profile(user_id, params: UpdatePharmacyProfileParams):
     """Updates the pharmacy profile data."""
 
-    user = User.objects.get(pk=user_id)
+    user = User.objects.select_related('pharmacy_account__pharmacy').get(pk=user_id)
 
-    user.pharmacy_account.update_establishment(
-        params.visible,
-        params.kind,
-        params.trade_name,
+    account, pharmacy = user.pharmacy_account, user.pharmacy_account.pharmacy
+
+    user.first_name = params.first_name
+    user.last_name = params.last_name
+
+    pharmacy.update_establishment(params.kind, params.trade_name)
+    pharmacy.update_contact_info(params.request_email, params.phone, params.website)
+    pharmacy.update_location(params.location)
+    pharmacy.update_opening_hours(params.opening_hours)
+    pharmacy.update_delivery_terms(params.delivery_terms)
+    pharmacy.update_preparation_tags(params.preparation_tags)
+
+    account.update_legal_info(
         params.legal_name,
         params.cuit,
         params.technical_director,
         params.license,
     )
 
-    user.pharmacy_account.update_contact(
-        params.request_email,
-        params.phone,
-        params.website,
-    )
-
-    user.pharmacy_account.update_location(params.location)
-    user.pharmacy_account.update_opening_hours(params.opening_hours)
-    user.pharmacy_account.update_delivery_terms(params.delivery_terms)
-    user.pharmacy_account.update_preparation_tags(params.preparation_tags)
-    user.pharmacy_account.save()
+    pharmacy.save()
+    account.save()
+    user.save(update_fields=['first_name', 'last_name'])

@@ -2,6 +2,10 @@
 
 {% block head_title %}Mi perfil{% endblock head_title %}
 
+{% block extra_head %}
+    {% include "shared/_leaflet.html" %}
+{% endblock extra_head %}
+
 {% block content %}
     <main class="min-h-screen bg-base-200">
         <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -52,12 +56,7 @@
                             <h2 class="text-2xl font-semibold">Ubicación y entrega</h2>
                             <p class="text-base-content/70">Centra el mapa al buscar farmacias y se comparte solo con la farmacia que aceptes, si pedís envío.</p>
                         </div>
-                        {% include "shared/_field.html" with field=form.address %}
-                        <div class="grid sm:grid-cols-3 gap-4">
-                            {% include "shared/_field.html" with field=form.locality %}
-                            {% include "shared/_field.html" with field=form.postal_code %}
-                            {% include "shared/_field.html" with field=form.search_radius %}
-                        </div>
+                        {% include "shared/_place_search.html" with text=form.address locality=form.locality postal_code=form.postal_code latitude=form.latitude longitude=form.longitude radius=form.search_radius %}
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-3">
                         <h2 class="text-2xl font-semibold">Avisos por mail</h2>
@@ -74,3 +73,7 @@
         </div>
     </main>
 {% endblock content %}
+
+{% block extra_body %}
+    {% include "shared/_place_search_script.html" %}
+{% endblock extra_body %}

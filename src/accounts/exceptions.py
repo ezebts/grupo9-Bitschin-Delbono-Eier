@@ -12,4 +12,27 @@ class InvalidCuitError(Error):
 
 @dataclass(frozen=True)
 class InvalidDeliveryTermsError(Error):
-    message = _('Elegí retiro, envío, o ambos. El envío necesita radio y costo.')
+    message = _('Elegí retiro, envío, o ambos.')
+
+
+@dataclass(frozen=True)
+class DeliveryCostWithoutHomeDeliveryError(Error):
+    message = _(
+        'El costo de envío solo se puede cargar si marcás envío a domicilio.',
+    )
+
+
+@dataclass(frozen=True)
+class PharmacyCantBecomeVisible(Error):  # noqa: N818
+    message = _(
+        'Para aparecer en la búsqueda cargá el nombre comercial, '
+        'el email para solicitudes y la ubicación.',
+    )
+
+
+@dataclass(frozen=True)
+class PharmacyCantClearSearchData(Error):  # noqa: N818
+    message = _(
+        'Mientras estés visible no podés quitar el nombre comercial, '
+        'el email para solicitudes ni la ubicación.',
+    )

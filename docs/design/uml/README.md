@@ -6,7 +6,7 @@ If a diagram changes, update the matching `.mmd` and regenerate the `.svg` in th
 
 ## Accounts
 
-Users, client accounts, and pharmacy accounts.
+Users, client accounts, pharmacies, and pharmacy accounts.
 
 ![Accounts](accounts.svg)
 

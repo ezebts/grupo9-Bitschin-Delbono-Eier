@@ -1,0 +1,149 @@
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('placeSearch', () => {
+            let map
+            let marker
+            let circle
+            return {
+                places: [],
+                active: -1,
+                loading: false,
+                error: '',
+                init() {
+                    map = L.map(this.$refs.map, { scrollWheelZoom: false }).setView([-38.4, -63.6], 4)
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        referrerPolicy: 'strict-origin-when-cross-origin',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    }).addTo(map)
+                    map.on('click', ({ latlng }) => this.pin(latlng.lat, latlng.lng))
+                    this.$refs.radius?.addEventListener('change', () => this.drawRadius())
+                    if (this.$refs.latitude.value) this.mark(this.$refs.latitude.value, this.$refs.longitude.value)
+                },
+                async request(path, params) {
+                    this.loading = true
+                    this.error = ''
+                    try {
+                        const query = new URLSearchParams({ ...params, format: 'geocodejson', addressdetails: 1, 'accept-language': 'es' })
+                        const response = await fetch(`https://nominatim.openstreetmap.org/${path}?${query}`, {
+                            referrerPolicy: 'strict-origin-when-cross-origin',
+                        })
+                        if (!response.ok) throw new Error(response.statusText)
+                        const { features = [] } = await response.json()
+                        return features.map(({ properties, geometry }) => {
+                            const [longitude, latitude] = geometry.coordinates
+                            return { ...properties.geocoding, latitude, longitude }
+                        })
+                    } catch {
+                        this.error = 'No pudimos buscar direcciones. Probá de nuevo en un rato.'
+                        return null
+                    } finally {
+                        this.loading = false
+                    }
+                },
+                fill(values) {
+                    for (const name of ['latitude', 'longitude', 'locality', 'postal_code']) {
+                        if (this.$refs[name]) this.$refs[name].value = values[name] ?? ''
+                    }
+                    if (this.$refs.address) this.$refs.address.value = values.address ?? ''
+                },
+                mark(latitude, longitude) {
+                    marker?.remove()
+                    marker = L.marker([latitude, longitude], { draggable: true }).addTo(map)
+                    marker.on('dragend', () => this.pin(marker.getLatLng().lat, marker.getLatLng().lng))
+                    map.setView([latitude, longitude], Math.max(map.getZoom(), 16))
+                    this.drawRadius()
+                },
+                radiusKm() {
+                    const field = this.$refs.radius
+                    return field ? Number(field.value) : 0
+                },
+                drawRadius() {
+                    const kilometers = this.radiusKm()
+                    if (!marker || !kilometers) {
+                        circle?.remove()
+                        circle = null
+                        return
+                    }
+                    const center = marker.getLatLng()
+                    if (!circle) {
+                        circle = L.circle(center, {
+                            radius: kilometers * 1000,
+                            color: '#0E6B55',
+                            weight: 2,
+                            dashArray: '6 6',
+                            fillOpacity: 0.06,
+                        }).addTo(map)
+                    } else {
+                        circle.setLatLng(center)
+                        circle.setRadius(kilometers * 1000)
+                    }
+                },
+                clear() {
+                    this.fill({})
+                    marker?.remove()
+                    marker = null
+                    circle?.remove()
+                    circle = null
+                },
+                async search() {
+                    const text = this.$refs.text.value.trim()
+                    if (text.length < 3 || this.loading) return
+                    const places = await this.request('search', { q: text, countrycodes: 'ar', limit: 5 })
+                    if (!places) return
+                    this.places = places
+                    this.active = places.length ? 0 : -1
+                    if (!places.length) this.error = 'No encontramos esa dirección. Probá con calle y altura, o con el barrio.'
+                },
+                move(step) {
+                    if (!this.places.length) return
+                    this.active = (this.active + step + this.places.length) % this.places.length
+                },
+                enter() {
+                    if (this.places.length) this.choose(this.places[Math.max(this.active, 0)])
+                    else this.search()
+                },
+                close() {
+                    this.places = []
+                    this.active = -1
+                },
+                choose(place) {
+                    const { label, name, street, housenumber, district, city, postcode, latitude, longitude } = place
+                    const road = street || name || ''
+                    const address = [road, housenumber].filter(Boolean).join(' ')
+                    const postal = /^[A-Za-z]\d{4}$/.test(postcode || '') ? postcode.slice(1) : (postcode || '')
+                    this.fill({
+                        latitude,
+                        longitude,
+                        address,
+                        locality: city || district,
+                        postal_code: postal,
+                    })
+                    this.$refs.text.value = this.$refs.address ? label : (address || this.$refs.text.value)
+                    this.mark(latitude, longitude)
+                    this.close()
+                },
+                async pin(latitude, longitude, fallback = 'Punto elegido en el mapa') {
+                    this.mark(latitude, longitude)
+                    const [place] = (await this.request('reverse', { lat: latitude, lon: longitude })) || []
+                    this.error = ''
+                    this.choose({ label: fallback, ...place, latitude, longitude })
+                },
+                locate() {
+                    if (!navigator.geolocation) {
+                        this.error = 'Tu navegador no permite compartir la ubicación.'
+                        return
+                    }
+                    this.loading = true
+                    navigator.geolocation.getCurrentPosition(
+                        ({ coords }) => this.pin(coords.latitude, coords.longitude, 'Mi ubicación actual'),
+                        () => {
+                            this.loading = false
+                            this.error = 'No pudimos obtener tu ubicación. Revisá los permisos del navegador.'
+                        },
+                    )
+                },
+            }
+        })
+    })
+</script>

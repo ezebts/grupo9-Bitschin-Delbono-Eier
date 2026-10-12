@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from django.db import transaction
 
-from accounts.models import MailPreferences, User
+from accounts.models import MailPreferences, SearchRadius, User
 from shared.values import Location, PhoneNumber
 
 
@@ -10,9 +10,9 @@ from shared.values import Location, PhoneNumber
 class UpdateClientProfileParams:
     first_name: str
     last_name: str
-    phone: PhoneNumber
-    location: Location
-    search_radius: int
+    phone: PhoneNumber | None
+    location: Location | None
+    search_radius: SearchRadius | None
     health_insurance_number: str
     mail_preferences: MailPreferences
 
@@ -37,5 +37,6 @@ def update_client_profile(user_id, params: UpdateClientProfileParams):
     )
 
     user.client_account.update_mail_preferences(params.mail_preferences)
+
     user.client_account.save()
     user.save(update_fields=['first_name', 'last_name'])

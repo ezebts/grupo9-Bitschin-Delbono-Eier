@@ -3,6 +3,10 @@
 
 {% block head_title %}Perfil de la farmacia{% endblock head_title %}
 
+{% block extra_head %}
+    {% include "shared/_leaflet.html" %}
+{% endblock extra_head %}
+
 {% block content %}
     <main class="min-h-screen bg-base-200">
         <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -12,10 +16,7 @@
                     <h1 class="text-4xl font-bold tracking-tight">Perfil de la farmacia</h1>
                     <p class="text-base-content/70">Estos datos definen cómo te encuentran los clientes en el mapa y adónde llegan los mails.</p>
                 </div>
-                <label class="inline-flex items-center gap-3 min-h-12 px-4 rounded-xl bg-[#E2F0EA] text-[#0A5141] font-bold cursor-pointer">
-                    {% render_field form.visible class="checkbox checkbox-primary" form="pharmacy-profile" %}
-                    Visible en la búsqueda
-                </label>
+                {% include "accounts/_visibility.html" with visible=profile.visible %}
             </div>
             <div class="flex flex-wrap gap-6 items-start">
                 <form id="pharmacy-profile" method="post" class="flex-[2_1_36rem] space-y-5" novalidate>
@@ -25,6 +26,20 @@
                             <p class="text-error text-sm">{{ error }}</p>
                         {% endfor %}
                     {% endif %}
+                    <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
+                        <h2 class="text-2xl font-semibold">Datos de la cuenta</h2>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            {% include "shared/_field.html" with field=form.first_name %}
+                            {% include "shared/_field.html" with field=form.last_name %}
+                            <fieldset class="fieldset">
+                                <span class="fieldset-legend">Email</span>
+                                <p class="min-h-12 px-3.5 py-3 rounded-lg bg-base-200 text-base-content/80">{{ profile.email }}</p>
+                                {% if profile.google_linked %}
+                                    <p class="label whitespace-normal">Viene de tu cuenta de Google.</p>
+                                {% endif %}
+                            </fieldset>
+                        </div>
+                    </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Datos del establecimiento</h2>
                         {% include "shared/_choices.html" with field=form.kind pills=True %}
@@ -46,24 +61,19 @@
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Ubicación</h2>
-                        {% include "shared/_field.html" with field=form.address %}
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            {% include "shared/_field.html" with field=form.locality %}
-                            {% include "shared/_field.html" with field=form.postal_code %}
-                        </div>
+                        {% include "shared/_place_search.html" with text=form.address locality=form.locality postal_code=form.postal_code latitude=form.latitude longitude=form.longitude %}
                     </section>
                     <div class="grid lg:grid-cols-2 gap-5">
                         <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                             <h2 class="text-2xl font-semibold">Horarios</h2>
-                            {% include "accounts/_hours.html" with day="Lun a vie" closed=form.weekday_closed opens=form.weekday_opens closes=form.weekday_closes %}
-                            {% include "accounts/_hours.html" with day="Sábados" closed=form.saturday_closed opens=form.saturday_opens closes=form.saturday_closes %}
-                            {% include "accounts/_hours.html" with day="Dom y feriados" closed=form.sunday_closed opens=form.sunday_opens closes=form.sunday_closes %}
+                            {% include "accounts/_hours.html" with day="Lun a vie" opens=form.weekday_opens closes=form.weekday_closes %}
+                            {% include "accounts/_hours.html" with day="Sábados" opens=form.saturday_opens closes=form.saturday_closes %}
+                            {% include "accounts/_hours.html" with day="Dom y feriados" opens=form.sunday_opens closes=form.sunday_closes %}
                         </section>
                         <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                             <h2 class="text-2xl font-semibold">Entregas</h2>
                             {% include "accounts/_checkbox.html" with field=form.pickup %}
                             {% include "accounts/_checkbox.html" with field=form.home_delivery %}
-                            {% include "shared/_field.html" with field=form.delivery_radius %}
                             <fieldset class="fieldset">
                                 <legend class="fieldset-legend">{{ form.delivery_base_cost.label }}</legend>
                                 <div class="flex gap-2">
@@ -131,7 +141,7 @@
                                     {% endif %}
                                 </span>
                                 <span class="flex flex-wrap gap-x-2 gap-y-1.5 items-center text-sm">
-                                    {% if form.weekday_closed.value %}
+                                    {% if not form.weekday_opens.value %}
                                         <span class="font-semibold">Cerrado entre semana</span>
                                     {% elif form.weekday_closes.value %}
                                         <span class="font-semibold text-[#0A5141]">Abierta · cierra {{ form.weekday_closes.value|time:"H:i" }}</span>
@@ -151,7 +161,7 @@
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-6 space-y-3">
                         <h2 class="text-sm font-bold text-base-content/70">Cuenta</h2>
-                        <p class="text-sm font-semibold">{{ profile.email }}</p>
+                        <p class="text-base-content/70">{{ profile.email }}</p>
                         {% if profile.google_linked %}
                             <p class="text-sm text-base-content/70">Vinculada con Google</p>
                         {% endif %}
@@ -165,3 +175,7 @@
         </div>
     </main>
 {% endblock content %}
+
+{% block extra_body %}
+    {% include "shared/_place_search_script.html" %}
+{% endblock extra_body %}

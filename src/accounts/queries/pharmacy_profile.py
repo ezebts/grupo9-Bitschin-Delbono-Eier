@@ -12,6 +12,8 @@ from shared.values import Location, PhoneNumber
 
 @dataclass(frozen=True)
 class PharmacyAccountProfile:
+    first_name: str
+    last_name: str
     email: str
     google_linked: bool
     visible: bool
@@ -33,23 +35,27 @@ class PharmacyAccountProfile:
 def get_account_pharmacy_profile(user_id):
     """Gets the pharmacy profile data."""
 
-    user = User.objects.get(pk=user_id)
+    user = User.objects.select_related('pharmacy_account__pharmacy').get(pk=user_id)
+
+    account, pharmacy = user.pharmacy_account, user.pharmacy_account.pharmacy
 
     return PharmacyAccountProfile(
+        first_name=user.first_name,
+        last_name=user.last_name,
         email=user.email,
         google_linked=user.socialaccount_set.filter(provider='google').exists(),
-        visible=user.pharmacy_account.visible,
-        kind=user.pharmacy_account.kind,
-        trade_name=user.pharmacy_account.trade_name,
-        legal_name=user.pharmacy_account.legal_name,
-        cuit=user.pharmacy_account.cuit,
-        technical_director=user.pharmacy_account.technical_director,
-        license=user.pharmacy_account.license,
-        request_email=user.pharmacy_account.request_email,
-        phone=user.pharmacy_account.phone,
-        website=user.pharmacy_account.website,
-        location=user.pharmacy_account.location,
-        opening_hours=user.pharmacy_account.opening_hours,
-        delivery_terms=user.pharmacy_account.delivery_terms,
-        preparation_tags=user.pharmacy_account.preparation_tags,
+        visible=pharmacy.visible,
+        kind=pharmacy.kind,
+        trade_name=pharmacy.trade_name,
+        legal_name=account.legal_name,
+        cuit=account.cuit,
+        technical_director=account.technical_director,
+        license=account.license,
+        request_email=pharmacy.request_email,
+        phone=pharmacy.phone,
+        website=pharmacy.website,
+        location=pharmacy.location,
+        opening_hours=pharmacy.opening_hours,
+        delivery_terms=pharmacy.delivery_terms,
+        preparation_tags=pharmacy.preparation_tags,
     )

@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% load heroicons static widget_tweaks %}
+{% load heroicons widget_tweaks %}
 
 {% block head_title %}Nueva solicitud{% endblock head_title %}
 
 {% block extra_head %}
-    <link rel="stylesheet" href="{% static 'shared/leaflet/leaflet.css' %}">
-    <script defer src="{% static 'shared/leaflet/leaflet.js' %}"></script>
+    {% include "shared/_leaflet.html" %}
 {% endblock extra_head %}
 
 {% block content %}
@@ -37,9 +36,9 @@
                     {% endfor %}
                     <div class="grid sm:grid-cols-2 gap-4">
                         <fieldset class="fieldset">
-                            <label class="fieldset-legend" for="{{ form.preparation_type.id_for_label }}">{{ form.preparation_type.label }}</label>
-                            {% render_field form.preparation_type class="select w-full" %}
-                            {% for error in form.preparation_type.errors %}
+                            <label class="fieldset-legend" for="{{ form.preparation_tag.id_for_label }}">{{ form.preparation_tag.label }}</label>
+                            {% render_field form.preparation_tag class="select w-full" %}
+                            {% for error in form.preparation_tag.errors %}
                                 <p class="text-error text-sm">{{ error }}</p>
                             {% endfor %}
                         </fieldset>
@@ -90,74 +89,7 @@
                         {% include "shared/_choices.html" with field=form.urgency pills=True %}
                         {% include "shared/_choices.html" with field=form.delivery_preferences pills=True %}
                     </div>
-                    <fieldset class="fieldset"
-                              x-data="placeSearch"
-                              x-on:keydown.escape="close()"
-                              x-on:click.outside="close()">
-                        <label class="fieldset-legend" for="{{ form.search_area.id_for_label }}">{{ form.search_area.label }}</label>
-                        <div class="flex flex-wrap gap-2">
-                            <div class="relative flex-[1_1_18rem]">
-                                <label class="input w-full">
-                                    {% heroicon_outline "map-pin" size=20 class="opacity-70" %}
-                                    <input type="text"
-                                           name="{{ form.search_area.html_name }}"
-                                           id="{{ form.search_area.id_for_label }}"
-                                           value="{{ form.search_area.value|default:'' }}"
-                                           maxlength="200"
-                                           autocomplete="off"
-                                           placeholder="Barrio, o calle y altura"
-                                           class="grow"
-                                           role="combobox"
-                                           aria-autocomplete="list"
-                                           aria-controls="place-options"
-                                           x-ref="text"
-                                           x-bind:aria-expanded="places.length > 0"
-                                           x-bind:aria-activedescendant="active >= 0 ? `place-option-${active}` : ''"
-                                           x-on:input="clear(); close()"
-                                           x-on:keydown.down.prevent="move(1)"
-                                           x-on:keydown.up.prevent="move(-1)"
-                                           x-on:keydown.enter.prevent="enter()">
-                                    <span x-show="loading" x-cloak class="loading loading-spinner loading-sm"></span>
-                                </label>
-                                <ul id="place-options" role="listbox" x-show="places.length" x-cloak class="absolute z-10 mt-1 w-full bg-base-100 border border-base-300 rounded-xl shadow-lg overflow-hidden">
-                                    <template x-for="(place, index) in places" x-bind:key="index">
-                                        <li role="option" x-bind:id="`place-option-${index}`" x-bind:aria-selected="index === active">
-                                            <button type="button"
-                                                    tabindex="-1"
-                                                    class="w-full text-left px-4 py-2.5"
-                                                    x-bind:class="index === active ? 'bg-[#E2F0EA] text-[#0A5141]' : ''"
-                                                    x-text="place.label"
-                                                    x-on:mouseenter="active = index"
-                                                    x-on:click="choose(place)"></button>
-                                        </li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <button type="button" class="btn bg-base-100 border border-base-300" x-on:click="search()" x-bind:disabled="loading">
-                                {% heroicon_outline "magnifying-glass" size=18 %}
-                                Buscar
-                            </button>
-                            <button type="button" class="btn bg-base-100 border border-base-300" x-on:click="locate()" x-bind:disabled="loading">
-                                {% heroicon_outline "viewfinder-circle" size=18 %}
-                                Usar mi ubicación
-                            </button>
-                        </div>
-                        <input type="hidden" name="{{ form.latitude.html_name }}" value="{{ form.latitude.value|default_if_none:''|stringformat:'s' }}" x-ref="latitude">
-                        <input type="hidden" name="{{ form.longitude.html_name }}" value="{{ form.longitude.value|default_if_none:''|stringformat:'s' }}" x-ref="longitude">
-                        <input type="hidden" name="{{ form.address.html_name }}" value="{{ form.address.value|default:'' }}" x-ref="address">
-                        <input type="hidden" name="{{ form.locality.html_name }}" value="{{ form.locality.value|default:'' }}" x-ref="locality">
-                        <input type="hidden" name="{{ form.postal_code.html_name }}" value="{{ form.postal_code.value|default:'' }}" x-ref="postal_code">
-                        <p class="text-error text-sm" x-show="error" x-text="error" x-cloak></p>
-                        {% for error in form.search_area.errors %}
-                            <p class="text-error text-sm">{{ error }}</p>
-                        {% endfor %}
-                        <div x-ref="map" class="h-72 mt-2 rounded-xl border border-base-300 isolate"></div>
-                        <p class="label whitespace-normal">Tocá el mapa o arrastrá el marcador para ajustar el punto exacto.</p>
-                        <label class="inline-flex items-center gap-2 mt-1 cursor-pointer text-sm">
-                            {% render_field form.save_location class="checkbox checkbox-primary checkbox-sm" %}
-                            {{ form.save_location.label }}
-                        </label>
-                    </fieldset>
+                    {% include "shared/_place_search.html" with text=form.search_area address=form.address locality=form.locality postal_code=form.postal_code latitude=form.latitude longitude=form.longitude hide_details=True %}
                     <fieldset class="fieldset">
                         <label class="fieldset-legend" for="{{ form.note.id_for_label }}">
                             {{ form.note.label }}
@@ -169,11 +101,10 @@
                         {% endfor %}
                     </fieldset>
                     <div class="flex flex-wrap justify-end gap-3 pt-6 border-t border-base-300">
-                        <button type="submit" class="btn btn-primary btn-lg order-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
                             Continuar: elegir farmacias
                             {% heroicon_outline "arrow-right" size=18 %}
                         </button>
-                        <button type="submit" name="save_draft" class="btn btn-lg bg-base-100 border border-base-300 order-1">Guardar borrador</button>
                     </div>
                 </form>
                 <aside class="flex-[1_1_18rem] space-y-4">
@@ -202,6 +133,9 @@
             </div>
         </div>
     </main>
+    {% if request.session.new_order %}
+        {% include "orders/_leave_order.html" %}
+    {% endif %}
 {% endblock content %}
 
 {% block extra_body %}
@@ -222,118 +156,7 @@
                     return `${megabytes.toFixed(1).replace('.', ',')} MB`
                 },
             }))
-
-            Alpine.data('placeSearch', () => {
-                let map
-                let marker
-                return {
-                    places: [],
-                    active: -1,
-                    loading: false,
-                    error: '',
-                    init() {
-                        map = L.map(this.$refs.map).setView([-38.4, -63.6], 4)
-                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            maxZoom: 19,
-                            referrerPolicy: 'strict-origin-when-cross-origin',
-                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                        }).addTo(map)
-                        map.on('click', ({ latlng }) => this.pin(latlng.lat, latlng.lng))
-                        if (this.$refs.latitude.value) this.mark(this.$refs.latitude.value, this.$refs.longitude.value)
-                    },
-                    async request(path, params) {
-                        this.loading = true
-                        this.error = ''
-                        try {
-                            const query = new URLSearchParams({ ...params, format: 'geocodejson', addressdetails: 1, 'accept-language': 'es' })
-                            const response = await fetch(`https://nominatim.openstreetmap.org/${path}?${query}`, {
-                                referrerPolicy: 'strict-origin-when-cross-origin',
-                            })
-                            if (!response.ok) throw new Error(response.statusText)
-                            const { features = [] } = await response.json()
-                            return features.map(({ properties, geometry }) => {
-                                const [longitude, latitude] = geometry.coordinates
-                                return { ...properties.geocoding, latitude, longitude }
-                            })
-                        } catch {
-                            this.error = 'No pudimos buscar direcciones. Probá de nuevo en un rato.'
-                            return null
-                        } finally {
-                            this.loading = false
-                        }
-                    },
-                    fill(values) {
-                        for (const name of ['latitude', 'longitude', 'address', 'locality', 'postal_code']) {
-                            this.$refs[name].value = values[name] ?? ''
-                        }
-                    },
-                    mark(latitude, longitude) {
-                        marker?.remove()
-                        marker = L.marker([latitude, longitude], { draggable: true }).addTo(map)
-                        marker.on('dragend', () => this.pin(marker.getLatLng().lat, marker.getLatLng().lng))
-                        map.setView([latitude, longitude], Math.max(map.getZoom(), 16))
-                    },
-                    clear() {
-                        this.fill({})
-                        marker?.remove()
-                        marker = null
-                    },
-                    async search() {
-                        const text = this.$refs.text.value.trim()
-                        if (text.length < 3 || this.loading) return
-                        const places = await this.request('search', { q: text, countrycodes: 'ar', limit: 5 })
-                        if (!places) return
-                        this.places = places
-                        this.active = places.length ? 0 : -1
-                        if (!places.length) this.error = 'No encontramos esa dirección. Probá con calle y altura, o con el barrio.'
-                    },
-                    move(step) {
-                        if (!this.places.length) return
-                        this.active = (this.active + step + this.places.length) % this.places.length
-                    },
-                    enter() {
-                        if (this.places.length) this.choose(this.places[Math.max(this.active, 0)])
-                        else this.search()
-                    },
-                    close() {
-                        this.places = []
-                        this.active = -1
-                    },
-                    choose(place) {
-                        const { label, street, housenumber, district, city, postcode, latitude, longitude } = place
-                        this.$refs.text.value = label
-                        this.fill({
-                            latitude,
-                            longitude,
-                            address: street && housenumber ? `${street} ${housenumber}` : '',
-                            locality: district || city,
-                            postal_code: postcode,
-                        })
-                        this.mark(latitude, longitude)
-                        this.close()
-                    },
-                    async pin(latitude, longitude, fallback = 'Punto elegido en el mapa') {
-                        this.mark(latitude, longitude)
-                        const [place] = (await this.request('reverse', { lat: latitude, lon: longitude })) || []
-                        this.error = ''
-                        this.choose({ label: fallback, ...place, latitude, longitude })
-                    },
-                    locate() {
-                        if (!navigator.geolocation) {
-                            this.error = 'Tu navegador no permite compartir la ubicación.'
-                            return
-                        }
-                        this.loading = true
-                        navigator.geolocation.getCurrentPosition(
-                            ({ coords }) => this.pin(coords.latitude, coords.longitude, 'Mi ubicación actual'),
-                            () => {
-                                this.loading = false
-                                this.error = 'No pudimos obtener tu ubicación. Revisá los permisos del navegador.'
-                            },
-                        )
-                    },
-                }
-            })
         })
     </script>
+    {% include "shared/_place_search_script.html" %}
 {% endblock extra_body %}

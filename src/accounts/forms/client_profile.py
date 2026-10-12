@@ -4,7 +4,14 @@ from accounts.commands.update_client_profile import UpdateClientProfileParams
 from accounts.models import MailPreferences, SearchRadius
 from accounts.queries.client_profile import ClientAccountProfile
 from shared.forms import TypedForm
-from shared.values import Location, PhoneNumber
+from shared.values import (
+    Coordinates,
+    IncompleteLocationError,
+    InvalidCoordinatesError,
+    Location,
+    PhoneNumber,
+    UnselectedSearchPlaceError,
+)
 
 
 class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
@@ -12,7 +19,7 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
 
     last_name = forms.CharField(label='Apellido', max_length=150)
 
-    phone = forms.CharField(label='Teléfono', max_length=30)
+    phone = forms.CharField(label='Teléfono', max_length=30, required=False)
 
     health_insurance_number = forms.CharField(
         label='N.º de Beneficiario (Obra Social / Prepaga)',
@@ -20,19 +27,29 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
         required=False,
     )
 
-    address = forms.CharField(label='Dirección', max_length=200)
+    address = forms.CharField(label='Dirección', max_length=200, required=False)
 
-    locality = forms.CharField(label='Barrio / localidad', max_length=120)
+    locality = forms.CharField(label='Localidad', max_length=120, required=False)
 
     postal_code = forms.CharField(
         label='Código postal',
         max_length=Location.postal_code_max_length,
+        required=False,
     )
 
+    latitude = forms.FloatField(widget=forms.HiddenInput, required=False)
+
+    longitude = forms.FloatField(widget=forms.HiddenInput, required=False)
+
     search_radius = forms.TypedChoiceField(
-        label='Radio de búsqueda',
+        label='Radio de búsqueda de farmacias por defecto',
         coerce=int,
-        choices=[(radius.value, f'Hasta {radius.value} km') for radius in SearchRadius],
+        required=False,
+        choices=[
+            ('', ''),
+            *[(radius.value, f'Hasta {radius.value} km') for radius in SearchRadius],
+        ],
+        widget=forms.Select(attrs={'x-ref': 'radius'}),
     )
 
     mail_on_reply = forms.BooleanField(
@@ -59,10 +76,16 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
         return self.cleaned_data['last_name'].strip()
 
     def clean_phone(self):
-        return PhoneNumber.AR(self.cleaned_data['phone'])
+        number = self.cleaned_data['phone'].strip()
+        if not number:
+            return None
+        return PhoneNumber.AR(number)
 
     def clean_search_radius(self):
-        return SearchRadius(self.cleaned_data['search_radius'])
+        radius = self.cleaned_data['search_radius']
+        if not radius:
+            return None
+        return SearchRadius(radius)
 
     def clean_health_insurance_number(self):
         return self.cleaned_data['health_insurance_number'].strip()
@@ -74,15 +97,32 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
         return cleaned
 
     def _clean_location(self, cleaned):
-        location_fields = ('address', 'locality', 'postal_code')
-        if not all(field in cleaned for field in location_fields):
+        address = cleaned.get('address', '')
+        locality = cleaned.get('locality', '')
+        postal_code = cleaned.get('postal_code', '')
+
+        if not any(value.strip() for value in (address, locality, postal_code)):
+            cleaned['location'] = None
             return
 
-        cleaned['location'] = Location.create(
-            cleaned['address'],
-            cleaned['locality'],
-            cleaned['postal_code'],
-        )
+        try:
+            coordinates = Coordinates.create(
+                cleaned.get('latitude'),
+                cleaned.get('longitude'),
+            )
+        except InvalidCoordinatesError:
+            self.add_error('address', UnselectedSearchPlaceError())
+            return
+
+        try:
+            cleaned['location'] = Location.create(
+                address,
+                locality,
+                postal_code,
+                coordinates,
+            )
+        except IncompleteLocationError as error:
+            self.add_error('postal_code', error)
 
     def _clean_mail_preferences(self, cleaned):
         mail_fields = ('mail_on_reply', 'mail_on_status_change', 'mail_on_quote_expiry')
@@ -121,7 +161,17 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
             'address': location.address if location else '',
             'locality': location.locality if location else '',
             'postal_code': location.postal_code if location else '',
-            'search_radius': int(profile.search_radius or SearchRadius.KM5),
+            'latitude': (
+                location.coordinates.latitude
+                if location and location.coordinates
+                else None
+            ),
+            'longitude': (
+                location.coordinates.longitude
+                if location and location.coordinates
+                else None
+            ),
+            'search_radius': profile.search_radius or '',
             'mail_on_reply': mail.on_reply if mail else True,
             'mail_on_status_change': mail.on_status_change if mail else True,
             'mail_on_quote_expiry': mail.on_quote_expiry if mail else True,
