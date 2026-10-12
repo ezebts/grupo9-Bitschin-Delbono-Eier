@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from django.db.models import OuterRef, Subquery
+from django.db.models import F, OuterRef, Subquery
 
 from chats.models import Conversation, Message
 
@@ -112,10 +112,15 @@ def get_pharmacy_inbox(user_id, search='', *, unread_only=False) -> PharmacyInbo
 def get_conversation(user_id, conversation_id) -> OpenConversation:
     """Reads one conversation that belongs to a pharmacy."""
 
+    customer = 'quote_request__order__client_account__user'
+
     conversation = (
-        Conversation.objects.with_customer()
-        .with_messages()
+        Conversation.objects.with_messages()
         .for_pharmacy(user_id)
+        .annotate(
+            customer_first_name=F(f'{customer}__first_name'),
+            customer_last_name=F(f'{customer}__last_name'),
+        )
         .get(pk=conversation_id)
     )
 
@@ -137,12 +142,14 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
         .first()
     )
 
+    customer_name = (
+        f'{conversation.customer_first_name} {conversation.customer_last_name}'
+    ).strip()
+
     return OpenConversation(
         id=conversation.pk,
         title=conversation.title,
-        customer_name=(
-            conversation.customer.get_full_name() or conversation.customer.email
-        ),
+        customer_name=customer_name,
         waiting_for_pharmacy=latest_conversation_sender != Message.Sender.PHARMACY,
         messages=messages,
     )

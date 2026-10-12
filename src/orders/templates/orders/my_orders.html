@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load tz %}
+
+{% block head_title %}Mis pedidos{% endblock head_title %}
+
+{% block content %}
+    <main class="min-h-screen bg-base-200">
+        <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="space-y-1.5">
+                    <h1 class="text-4xl font-bold tracking-tight">Mis pedidos</h1>
+                    <p class="text-base-content/70">Cada receta es un pedido. Entra para chatear con las farmacias y comparar presupuestos.</p>
+                </div>
+                <a href="{% url 'orders:new' %}" class="inline-flex items-center justify-center gap-2 min-h-12 px-5 rounded-xl bg-[#0E6B55] text-white font-bold">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                    Nueva solicitud
+                </a>
+            </div>
+            {% include "shared/_messages.html" %}
+            <div role="group" aria-label="Filtrar pedidos" class="flex flex-wrap gap-2">
+                {% for tab in tabs %}
+                    <a href="{{ tab.url }}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if tab.active %}bg-[#12201B] text-white border border-[#12201B]{% else %}bg-base-100 border border-[#C9D2CD]{% endif %}" {% if tab.active %}aria-current="page"{% endif %}>{{ tab.label }} · {{ tab.count }}</a>
+                {% endfor %}
+            </div>
+            {% if orders.orders %}
+                {% timezone request.user.timezone %}
+                    {% now "Y-m-d" as today %}
+                    <ul class="grid gap-3">
+                        {% for order in orders.orders %}
+                            <li>
+                                <a href="{% url 'chats:customer_inbox' %}?order_id={{ order.id }}" class="flex flex-wrap items-center gap-x-7 gap-y-3.5 px-6 py-5 bg-base-100 rounded-[18px] text-base-content {% if order.status == 'quoted' %}border-[1.5px] border-[#1E4FC2]{% else %}border border-base-300{% endif %}">
+                                    <span class="flex flex-[3_1_340px] gap-4 items-start min-w-0">
+                                        <span class="w-12 h-12 rounded-[14px] inline-flex items-center justify-center shrink-0 {% if order.status == 'waiting' %}bg-[#FCEFD9] text-[#8A4B00]{% elif order.status == 'quoted' %}bg-[#E7EEFD] text-[#1E4FC2]{% elif order.status == 'in_progress' %}bg-[#E2F0EA] text-[#0A5141]{% else %}bg-[#ECEFED] text-[#3F4B47]{% endif %}" aria-hidden="true">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg>
+                                        </span>
+                                        <span class="flex flex-col gap-1 min-w-0">
+                                            <span class="font-bold text-[17px]">{{ order.formula }}</span>
+                                            <span class="text-sm text-[#51605A]">
+                                                {{ order.presentation }} · #{{ order.code }} ·
+                                                {% if order.created_at|date:"Y-m-d" == today %}
+                                                    Enviada hoy, {{ order.created_at|date:"H:i" }}
+                                                {% else %}
+                                                    Enviada el {{ order.created_at|date:"j b" }}
+                                                {% endif %}
+                                            </span>
+                                        </span>
+                                    </span>
+                                    <span class="flex flex-col gap-0.5 flex-[1_1_120px]">
+                                        <span class="text-[13px] text-[#51605A]">Presupuestos</span>
+                                        <span class="font-bold">{{ order.quotes_received }} de {{ order.quotes_total }}</span>
+                                    </span>
+                                    <span class="flex flex-col gap-0.5 flex-[1_1_140px]">
+                                        <span class="text-[13px] text-[#51605A]">Mejor precio</span>
+                                        <span class="font-bold">—</span>
+                                    </span>
+                                    <span class="flex flex-[1_1_210px]">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-bold {% if order.status == 'waiting' %}bg-[#FCEFD9] text-[#8A4B00]{% elif order.status == 'quoted' %}bg-[#E7EEFD] text-[#1E4FC2]{% elif order.status == 'in_progress' %}bg-[#E2F0EA] text-[#0A5141]{% else %}bg-[#ECEFED] text-[#3F4B47]{% endif %}">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                                            {{ order.status_label }}
+                                        </span>
+                                    </span>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#51605A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endtimezone %}
+            {% else %}
+                <p class="text-base-content/70">Todavía no hay pedidos en esta lista.</p>
+            {% endif %}
+        </div>
+    </main>
+{% endblock content %}

@@ -12,17 +12,17 @@ class MessageAuthor:
 
 
 class ConversationQuerySet(models.QuerySet):
-    def with_customer(self):
-        return self.select_related('customer')
-
     def with_messages(self):
         return self.prefetch_related('messages')
 
     def for_customer(self, user_id):
-        return self.filter(customer_id=user_id)
+        return self.filter(quote_request__order__client_account__user_id=user_id)
+
+    def for_order(self, order_id):
+        return self.filter(quote_request__order_id=order_id)
 
     def for_pharmacy(self, user_id):
-        return self.filter(pharmacy_id=user_id)
+        return self.filter(quote_request__pharmacy__accounts__user_id=user_id)
 
     def pending(self):
         latest_sender = (
@@ -36,30 +36,21 @@ class ConversationQuerySet(models.QuerySet):
         )
 
     def search(self, term):
+        customer = 'quote_request__order__client_account__user'
         return self.filter(
-            Q(customer__first_name__icontains=term)
-            | Q(customer__last_name__icontains=term)
-            | Q(customer__email__icontains=term)
+            Q(**{f'{customer}__first_name__icontains': term})
+            | Q(**{f'{customer}__last_name__icontains': term})
+            | Q(**{f'{customer}__email__icontains': term})
             | Q(title__icontains=term)
             | Q(messages__body__icontains=term),
         ).distinct()
 
 
 class Conversation(models.Model):
-    customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        related_name='chat_conversations',
-        blank=True,
-        null=True,
-    )
-
-    pharmacy = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        related_name='pharmacy_conversations',
-        blank=True,
-        null=True,
+    quote_request = models.OneToOneField(
+        'orders.QuoteRequest',
+        on_delete=models.CASCADE,
+        related_name='conversation',
     )
 
     title = models.CharField(max_length=200, blank=True)
@@ -77,7 +68,8 @@ class Conversation(models.Model):
         return self.title or f'Conversación {self.pk}'
 
     def send_message(self, user_id, display_name, text):
-        if user_id == self.customer_id:
+        client_id = self.quote_request.order.client_account.user_id
+        if user_id == client_id:
             sender = Message.Sender.CUSTOMER
         else:
             sender = Message.Sender.PHARMACY

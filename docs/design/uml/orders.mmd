@@ -1,10 +1,10 @@
 classDiagram
-    Pedido "1" *-- "0..1" PrescriptionFile
-    Pedido "1" *-- "*" StatusEvent
-    Pedido *-- PedidoCode
-    Pedido *-- PedidoStatus
-    Pedido *-- Urgency
-    Pedido *-- DeliveryPreference
+    Order "1" *-- "0..1" PrescriptionFile
+    Order "1" *-- "*" StatusEvent
+    Order *-- OrderStatus
+    Order *-- OrderProgress
+    Order *-- Urgency
+    Order *-- DeliveryPreference
     StatusEvent *-- FulfillmentStatus
     QuoteRequest "1" *-- "*" Quote
     QuoteRequest *-- QuoteRequestStatus
@@ -15,15 +15,16 @@ classDiagram
     Message *-- MessageSender
     UserMessage *-- MessageAuthor
 
-    class Pedido {
+    class Order {
         clientAccountId: int
+        code: str
+        preparationTag: str
         formula: str
         presentation: str
         note: str
-        +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, file) Pedido$
-        +updateDraft(formula, presentation, urgency, deliveryPreference, note)
-        +attach(file)
-        +submit()
+        +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, preparationTag) Order$
+        +attach_prescription(file)
+        +progress() OrderProgress
         +cancel()
         +startPreparation(estimatedAt, note)
         +completePreparation()
@@ -34,9 +35,9 @@ classDiagram
         note: str
     }
     class QuoteRequest {
-        pedidoId: int
-        pharmacyAccountId: int
-        +create(pedidoId, pharmacyAccountId) QuoteRequest$
+        orderId: int
+        pharmacyId: int
+        +create(orderId, pharmacyId) QuoteRequest$
         +receiveQuote(price, readyAt, validUntil, deliveryPreference, shippingCost, message, pdf)
         +reviseQuote(price, readyAt, validUntil, deliveryPreference, shippingCost, message, pdf)
         +withdrawQuote()
@@ -76,18 +77,17 @@ classDiagram
         maxSize: int
         +create(file) PrescriptionFile$
     }
-    class PedidoCode {
-        <<value>>
-        prefix: str
-        number: int
-        +random() PedidoCode$
-    }
-    class PedidoStatus {
+    class OrderStatus {
         <<enum>>
-        DRAFT = "draft"
-        SENT = "sent"
         CANCELLED = "cancelled"
-        +fromValue(raw) PedidoStatus$
+        +fromValue(raw) OrderStatus$
+    }
+    class OrderProgress {
+        <<enum>>
+        WAITING = "waiting"
+        QUOTED = "quoted"
+        IN_PROGRESS = "in_progress"
+        FINISHED = "finished"
     }
     class Urgency {
         <<enum>>
@@ -139,7 +139,7 @@ classDiagram
     }
 
     classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
-    class Pedido:::model
+    class Order:::model
     class StatusEvent:::model
     class QuoteRequest:::model
     class Quote:::model
@@ -148,8 +148,8 @@ classDiagram
     class MessageSender:::model
     class UserMessage:::model
     class PrescriptionFile:::model
-    class PedidoCode:::model
-    class PedidoStatus:::model
+    class OrderStatus:::model
+    class OrderProgress:::model
     class Urgency:::model
     class DeliveryPreference:::model
     class FulfillmentStatus:::model
