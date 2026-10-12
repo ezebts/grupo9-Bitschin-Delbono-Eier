@@ -6,6 +6,7 @@ from chats.commands.send_system_message import send_system_message
 from chats.models import Conversation, MessageAuthor, UserMessage
 from chats.queries.customer_inbox import get_customer_conversation
 from chats.queries.pharmacy_inbox import get_pharmacy_inbox
+from chats.tests.support import open_conversation
 
 pytestmark = pytest.mark.django_db
 
@@ -24,7 +25,7 @@ def _user(username, role, first_name='', last_name=''):
 
 
 @pytest.fixture
-def customer(db):  # noqa: ARG001
+def customer():
     return _user(
         'sofia@example.com',
         User.Role.CUSTOMER,
@@ -34,13 +35,14 @@ def customer(db):  # noqa: ARG001
 
 
 @pytest.fixture
-def pharmacy(db):  # noqa: ARG001
+def pharmacy():
     return _user('staff@example.com', User.Role.PHARMACY)
 
 
 @pytest.fixture
 def conversation(customer, pharmacy):
-    return Conversation.objects.create(customer=customer, pharmacy=pharmacy)
+    _, conversation = open_conversation(customer, pharmacy)
+    return conversation
 
 
 def test_post_records_the_author_and_the_text(customer, conversation):
@@ -58,7 +60,7 @@ def test_post_records_the_author_and_the_text(customer, conversation):
 
 def test_pharmacy_cannot_post_in_another_conversation(customer, pharmacy):
     other = _user('otra-farmacia@example.com', User.Role.PHARMACY)
-    other_conversation = Conversation.objects.create(customer=customer, pharmacy=other)
+    _, other_conversation = open_conversation(customer, other, formula='Otra')
 
     with pytest.raises(Conversation.DoesNotExist):
         send_message(pharmacy.id, other_conversation.id, 'Mensaje no autorizado')
@@ -66,9 +68,14 @@ def test_pharmacy_cannot_post_in_another_conversation(customer, pharmacy):
     assert other_conversation.messages.count() == 0
 
 
-def test_customer_cannot_post_in_another_conversation(customer):
-    other = _user('otra@example.com', User.Role.CUSTOMER, first_name='Otra')
-    other_conversation = Conversation.objects.create(customer=other)
+def test_customer_cannot_post_in_another_conversation(customer, pharmacy):
+    other = _user(
+        'otra@example.com',
+        User.Role.CUSTOMER,
+        first_name='Otra',
+        last_name='Cliente',
+    )
+    _, other_conversation = open_conversation(other, pharmacy, formula='Privada')
 
     with pytest.raises(Conversation.DoesNotExist):
         send_message(customer.id, other_conversation.id, 'Mensaje no autorizado')
@@ -76,12 +83,13 @@ def test_customer_cannot_post_in_another_conversation(customer):
     assert other_conversation.messages.count() == 0
 
 
-def test_customer_message_waits_for_the_pharmacy(customer, pharmacy, conversation):
+def test_customer_message_waits_for_the_pharmacy(customer, pharmacy):
+    order, conversation = open_conversation(customer, pharmacy)
     send_message(customer.id, conversation.id, '¿Ya está lista mi crema?')
     send_message(pharmacy.id, conversation.id, 'Sí, ya está lista para retirar.')
     send_message(customer.id, conversation.id, 'Gracias, paso por la tarde.')
 
-    opened = get_customer_conversation(customer.id, conversation.id)
+    opened = get_customer_conversation(customer.id, order.id, conversation.id)
     inbox = get_pharmacy_inbox(pharmacy.id)
 
     assert opened.messages[-1].body == 'Gracias, paso por la tarde.'
@@ -101,7 +109,8 @@ def test_pharmacy_reply_is_no_longer_waiting(customer, pharmacy, conversation):
     assert listed.last_message.is_pharmacy
 
 
-def test_system_message_is_not_a_user_message(customer, pharmacy, conversation):
+def test_system_message_is_not_a_user_message(customer, pharmacy):
+    order, conversation = open_conversation(customer, pharmacy)
     send_message(customer.id, conversation.id, '¿Ya está lista mi crema?')
     send_message(pharmacy.id, conversation.id, 'Sí, ya está lista para retirar.')
     send_system_message(
@@ -109,7 +118,7 @@ def test_system_message_is_not_a_user_message(customer, pharmacy, conversation):
         'Enviamos tu solicitud por mail a la farmacia',
     )
 
-    opened = get_customer_conversation(customer.id, conversation.id)
+    opened = get_customer_conversation(customer.id, order.id, conversation.id)
     inbox = get_pharmacy_inbox(pharmacy.id)
 
     assert opened.messages[-1].is_system

@@ -6,4 +6,4 @@ from django.shortcuts import redirect
 def home(request):
     if request.user.is_pharmacy:
         return redirect('chats:inbox')
-    return redirect('chats:customer_inbox')
+    return redirect('orders:list')

@@ -6,3 +6,47 @@
   --color-primary: #0E6B55;
   --color-primary-content: #FFFFFF;
 }
+
+@layer components {
+  .prescription-preview {
+    @apply relative isolate block h-28 w-full overflow-hidden rounded-xl bg-[#ECEFED];
+  }
+
+  .prescription-preview__embed {
+    @apply pointer-events-none absolute inset-0 z-0 overflow-hidden;
+  }
+
+  .prescription-preview__iframe {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: calc(100% + 0.75rem);
+    width: calc(100% + 1.5rem);
+    max-width: none;
+    border: 0;
+    translate: -50% 0;
+  }
+
+  .prescription-preview__image {
+    @apply pointer-events-none absolute inset-0 z-0 h-full w-full object-cover;
+  }
+
+  .prescription-preview__overlay {
+    @apply absolute inset-0 z-20 grid place-items-center text-white transition-colors duration-200 ease-out;
+    background-color: transparent;
+  }
+
+  .prescription-preview:hover .prescription-preview__overlay,
+  .prescription-preview:focus-visible .prescription-preview__overlay {
+    background-color: rgb(63 75 71 / 35%);
+  }
+
+  .prescription-preview__overlay > span {
+    @apply opacity-0 transition-opacity duration-200 ease-out;
+  }
+
+  .prescription-preview:hover .prescription-preview__overlay > span,
+  .prescription-preview:focus-visible .prescription-preview__overlay > span {
+    opacity: 1;
+  }
+}

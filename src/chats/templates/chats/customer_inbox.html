@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load heroicons tz %}
 
 {% block head_title %}Chat | Magistral{% endblock %}
 
@@ -7,15 +8,19 @@
         <div class="max-w-7xl mx-auto px-6 py-5 pb-12 flex flex-col gap-4">
             <div class="flex flex-col gap-1.5">
                 <nav aria-label="Ruta" class="text-sm text-[#51605A]">
-                    <a href="{% url 'chats:customer_inbox' %}" class="font-semibold">Mis pedidos</a>
+                    <a href="{% url 'orders:list' %}" class="font-semibold">Mis pedidos</a>
                     <span aria-hidden="true">/</span>
-                    <span aria-label="Código del pedido. Sale del pedido.">—</span>
+                    {% if order_code %}
+                        <span>#{{ order_code }}</span>
+                    {% else %}
+                        <span aria-label="Código del pedido. Sale del pedido.">—</span>
+                    {% endif %}
                 </nav>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
                     <h1 class="text-3xl font-bold tracking-tight leading-tight">Chat con farmacias</h1>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-bold bg-[#E7EEFD] text-[#1E4FC2]" aria-label="Presupuestos recibidos. Sale del pedido.">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-bold bg-[#E7EEFD] text-[#1E4FC2]">
                         <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
-                        —
+                        {% if order_progress %}{{ order_progress }}{% else %}—{% endif %}
                     </span>
                 </div>
             </div>
@@ -26,19 +31,40 @@
                 <aside class="w-full lg:w-80 shrink-0 flex flex-col gap-4">
                     <section aria-labelledby="det-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3.5">
                         <h2 id="det-titulo" class="text-[15px] font-bold">Tu solicitud</h2>
-                        <p class="text-sm text-[#51605A]">Sale del pedido.</p>
                         <dl class="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-2 text-sm">
-                            <dt class="text-[#51605A]">Tipo</dt><dd class="font-semibold" aria-label="Tipo. Sale del pedido.">—</dd>
-                            <dt class="text-[#51605A]">Cantidad</dt><dd class="font-semibold" aria-label="Cantidad. Sale del pedido.">—</dd>
-                            <dt class="text-[#51605A]">Para</dt><dd class="font-semibold" aria-label="Urgencia. Sale del pedido.">—</dd>
-                            <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold" aria-label="Entrega. Sale del pedido.">—</dd>
-                            <dt class="text-[#51605A]">Enviada</dt><dd class="font-semibold" aria-label="Fecha de envío. Sale del pedido.">—</dd>
+                            <dt class="text-[#51605A]">Tipo</dt><dd class="font-semibold">{{ preparation_label }}</dd>
+                            <dt class="text-[#51605A]">Cantidad</dt><dd class="font-semibold">{{ presentation }}</dd>
+                            <dt class="text-[#51605A]">Para</dt><dd class="font-semibold">{{ urgency_label }}</dd>
+                            <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold">{{ delivery_label }}</dd>
+                            <dt class="text-[#51605A]">Enviada</dt>
+                            <dd class="font-semibold">
+                                {% timezone request.user.timezone %}{{ sent_at|date:"j b, H:i" }}{% endtimezone %}
+                            </dd>
                         </dl>
-                        <div class="h-28 rounded-xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center text-[13px] font-semibold text-[#3F4B47]">Receta del pedido</div>
+                        {% if prescription_url %}
+                            {% with name=prescription_name|lower %}
+                                <a href="{{ prescription_url }}" target="_blank" rel="noopener noreferrer" class="prescription-preview" aria-label="Abrir documento">
+                                    {% if '.png' in name or '.jpg' in name %}
+                                        <img src="{{ prescription_url }}" alt="" class="prescription-preview__image">
+                                    {% else %}
+                                        <div class="prescription-preview__embed" aria-hidden="true">
+                                            <iframe src="{{ prescription_url }}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" title="Vista previa de la receta" class="prescription-preview__iframe" tabindex="-1"></iframe>
+                                        </div>
+                                    {% endif %}
+                                    <span class="prescription-preview__overlay">
+                                        <span>{% heroicon_solid "arrow-top-right-on-square" size=30 %}</span>
+                                    </span>
+                                </a>
+                            {% endwith %}
+                        {% else %}
+                            <div class="flex h-28 flex-col items-center justify-center gap-1.5 rounded-xl bg-[#ECEFED] text-[13px] font-semibold text-[#3F4B47]">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+                                Sin receta adjunta
+                            </div>
+                        {% endif %}
                     </section>
                     <section aria-labelledby="comp-titulo" class="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3">
                         <h2 id="comp-titulo" class="text-[15px] font-bold">Comparar presupuestos</h2>
-                        <p class="text-sm text-[#51605A]">Sale del pedido.</p>
                         <table class="w-full border-collapse text-sm">
                             <thead>
                                 <tr>
@@ -48,11 +74,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td class="py-2 border-t border-base-300 text-[#51605A]">—</td>
-                                    <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
-                                    <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
-                                </tr>
+                                {% for conversation in conversations %}
+                                    <tr>
+                                        <td class="py-2 border-t border-base-300 font-semibold">{{ conversation.pharmacy_name }}</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td class="py-2 border-t border-base-300 text-[#51605A]">—</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                    </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </section>

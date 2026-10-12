@@ -21,7 +21,7 @@ def send_message(user_id, conversation_id, text):
 
     message = conversation.send_message(
         user.id,
-        user.get_full_name() or user.email,
+        user.get_full_name(),
         text,
     )
 

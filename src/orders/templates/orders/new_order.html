@@ -52,7 +52,8 @@
                             <p class="text-error text-sm">{{ error }}</p>
                         {% endfor %}
                     </fieldset>
-                    <fieldset class="fieldset gap-2.5" x-data="prescriptionFile">
+                    <fieldset class="fieldset gap-2.5" x-data="prescriptionFile('{{ saved_prescription|escapejs }}')">
+                        <input type="hidden" name="clear_prescription" x-bind:value="cleared ? '1' : ''">
                         <legend class="fieldset-legend">
                             {{ form.prescription_file.label }}
                             <span class="font-normal text-base-content/70">(opcional)</span>
@@ -68,6 +69,15 @@
                             <span class="font-semibold">Arrastrá la receta acá o <span class="link link-primary">elegí un archivo</span></span>
                             <span class="text-sm text-base-content/70">PDF, JPG o PNG · hasta 10 MB</span>
                         </label>
+                        <template x-if="savedName && !file">
+                            <div class="flex items-center gap-3 px-3 py-2.5 border border-base-300 rounded-xl">
+                                <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-base-200 text-[#3F4B47] shrink-0">{% heroicon_outline "document" size=20 %}</span>
+                                <span class="flex-1 min-w-0 font-semibold truncate" x-text="savedName"></span>
+                                <button type="button" class="btn btn-ghost btn-square" x-bind:aria-label="`Quitar ${savedName}`" x-on:click="clearSaved()">
+                                    {% heroicon_outline "x-mark" size=20 %}
+                                </button>
+                            </div>
+                        </template>
                         <template x-if="file">
                             <div class="flex items-center gap-3 px-3 py-2.5 border border-base-300 rounded-xl">
                                 <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-base-200 text-[#3F4B47] shrink-0">{% heroicon_outline "document" size=20 %}</span>
@@ -121,7 +131,7 @@
                             </li>
                             <li class="flex gap-3">
                                 <span class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#E2F0EA] text-[#0A5141]">{% heroicon_outline "chat-bubble-left" size=14 %}</span>
-                                <span>Cada una responde con su presupuesto en el chat del pedido, en <a href="{% url 'chats:customer_inbox' %}" class="link link-primary font-semibold">Mis pedidos</a>.</span>
+                                <span>Cada una responde con su presupuesto en el chat del pedido, en <a href="{% url 'orders:list' %}" class="link link-primary font-semibold">Mis pedidos</a>.</span>
                             </li>
                         </ol>
                     </section>
@@ -141,14 +151,21 @@
 {% block extra_body %}
     <script>
         document.addEventListener('alpine:init', () => {
-            Alpine.data('prescriptionFile', () => ({
+            Alpine.data('prescriptionFile', (savedName) => ({
                 file: null,
+                savedName: savedName || '',
+                cleared: false,
                 dragging: false,
                 choose(files) {
                     const transfer = new DataTransfer()
                     if (files[0]) transfer.items.add(files[0])
                     this.$root.querySelector('input[type=file]').files = transfer.files
                     this.file = transfer.files[0] || null
+                    if (this.file) this.cleared = false
+                },
+                clearSaved() {
+                    this.savedName = ''
+                    this.cleared = true
                 },
                 size() {
                     const megabytes = this.file.size / (1024 * 1024)

@@ -11,6 +11,7 @@ from chats.queries.customer_inbox import (
     get_customer_inbox,
 )
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
+from orders.models import Order
 from shared.views import RoleRequiredMixin
 
 
@@ -104,6 +105,12 @@ class CustomerInboxMixin(RoleRequiredMixin):
             'conversation_id'
         )
 
+    def order_id(self):
+        order_id = self.request.GET.get('order_id')
+        if not order_id or not order_id.isdigit():
+            raise Http404
+        return int(order_id)
+
     def get_template_names(self):
         if self.request.htmx:
             return [self.partial_template_name]
@@ -113,22 +120,41 @@ class CustomerInboxMixin(RoleRequiredMixin):
         context = super().get_context_data(**kwargs)
         user_id = self.request.user.id
         conversation_id = self.conversation_id()
-        inbox = get_customer_inbox(user_id)
+        order_id = self.order_id()
+        try:
+            inbox = get_customer_inbox(user_id, order_id)
+        except Order.DoesNotExist:
+            raise Http404 from None
         conversations = inbox.conversations
+
+        if not conversation_id and conversations:
+            conversation_id = conversations[0].id
 
         if conversation_id:
             try:
-                selected = get_customer_conversation(user_id, conversation_id)
+                selected = get_customer_conversation(
+                    user_id,
+                    order_id,
+                    conversation_id,
+                )
             except Conversation.DoesNotExist:
                 raise Http404 from None
-        elif conversations:
-            selected = get_customer_conversation(user_id, conversations[0].id)
         else:
             selected = None
 
         context.update(
             conversations=conversations,
             selected=selected,
+            order_code=inbox.code,
+            order_progress=inbox.progress_label,
+            preparation_label=inbox.preparation_label,
+            presentation=inbox.presentation,
+            urgency_label=inbox.urgency_label,
+            delivery_label=inbox.delivery_label,
+            sent_at=inbox.created_at,
+            prescription_name=inbox.prescription_name,
+            prescription_url=inbox.prescription_url,
+            order_id=order_id,
             form=context.get('form', CustomerMessageForm()),
         )
         return context
@@ -142,17 +168,6 @@ class CustomerReplyView(CustomerInboxMixin, FormView):
     form_class = CustomerMessageForm
     http_method_names = ('post',)
 
-    def post(self, request, *args, **kwargs):
-        try:
-            get_customer_conversation(
-                request.user.id,
-                kwargs['conversation_id'],
-            )
-        except Conversation.DoesNotExist:
-            raise Http404 from None
-
-        return super().post(request, *args, **kwargs)
-
     def form_valid(self, form):
         conversation_id = self.kwargs['conversation_id']
         send_message(
@@ -162,9 +177,11 @@ class CustomerReplyView(CustomerInboxMixin, FormView):
         )
 
         if not self.request.htmx:
-            return redirect(
-                f'{reverse("chats:customer_inbox")}?conversation_id={conversation_id}'
-            )
+            url = f'{reverse("chats:customer_inbox")}?conversation_id={conversation_id}'
+            order_id = self.request.GET.get('order_id')
+            if order_id:
+                url = f'{url}&order_id={order_id}'
+            return redirect(url)
 
         return self.render_to_response(
             self.get_context_data(form=CustomerMessageForm())
