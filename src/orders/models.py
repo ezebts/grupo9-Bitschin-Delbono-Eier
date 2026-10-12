@@ -1,5 +1,18 @@
 from django.db import models
 from django.db.models import Case, CharField, Count, Exists, OuterRef, Q, Value, When
+from django.utils import timezone
+
+from orders.exceptions import (
+    QuoteCannotBeEditedError,
+    QuoteCannotBeSubmittedError,
+    QuoteCannotBeWithdrawnError,
+)
+from shared.dataclasses import asdict, from_dict
+from shared.values import Money
+
+
+def _zero_delivery_cost():
+    return asdict(Money.ARS(0))
 
 
 def prescriptions_path(instance, filename):
@@ -191,6 +204,21 @@ class QuoteRequest(models.Model):
         default=QuoteRequestStatus.WAITING,
     )
 
+    _price = models.JSONField(null=True, blank=True)
+
+    preparation_time = models.CharField(max_length=80, blank=True)
+
+    _delivery_preferences = models.JSONField(
+        default=list,
+        db_column='delivery_preferences',
+    )
+
+    _delivery_cost = models.JSONField(default=_zero_delivery_cost, blank=True)
+
+    valid_until = models.DateField(null=True, blank=True)
+
+    quoted_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -204,6 +232,53 @@ class QuoteRequest(models.Model):
 
     def __str__(self):
         return f'{self.order.code} → {self.pharmacy}'
+
+    def submit_quote(self):
+        if self.status != QuoteRequestStatus.WAITING:
+            raise QuoteCannotBeSubmittedError
+
+        self.status = QuoteRequestStatus.QUOTED
+        self.quoted_at = timezone.now()
+
+    def update_quote(self):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeEditedError
+
+        self.quoted_at = timezone.now()
+
+    def withdraw_quote(self):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeWithdrawnError
+
+        self.status = QuoteRequestStatus.WITHDRAWN
+
+    @property
+    def price(self) -> Money | None:
+        return from_dict(Money, self._price)
+
+    @property
+    def delivery_cost(self) -> Money:
+        money = from_dict(Money, self._delivery_cost)
+        return money if money is not None else Money.ARS(0)
+
+    def set_quote_terms(
+        self,
+        *,
+        price: Money,
+        preparation_time,
+        delivery_preferences,
+        delivery_cost: Money,
+        valid_until,
+    ):
+        self._price = asdict(price)
+        self._delivery_cost = asdict(delivery_cost)
+        self.preparation_time = preparation_time
+        self._delivery_preferences = list(delivery_preferences)
+        self.valid_until = valid_until
+
+    @property
+    def delivery_preferences(self):
+        return tuple(self._delivery_preferences)
 
     @classmethod
     def create(cls, order, pharmacy):

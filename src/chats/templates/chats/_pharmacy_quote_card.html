@@ -1,0 +1,19 @@
+<div class="flex flex-col gap-1 items-end">
+    {% if selected.quoted_at %}
+        <span class="text-xs text-[#51605A]">Vos · <time>{{ selected.quoted_at|date:"j b, H:i" }}</time></span>
+    {% endif %}
+    <div class="w-full max-w-[80%] rounded-2xl rounded-br-sm bg-[#E2F0EA] px-4 py-3.5 flex flex-col gap-3">
+        <div class="rounded-xl border-[1.5px] border-[#0E6B55] bg-base-100 p-3.5 flex flex-col gap-2">
+            <div class="flex flex-wrap items-baseline justify-between gap-3">
+                <span class="text-xs font-bold uppercase tracking-wide text-[#0A5141]">Presupuesto</span>
+                <span class="text-2xl font-bold leading-none tracking-tight">{{ selected.quote_currency }} {{ selected.quote_price|floatformat:"2g" }}</span>
+            </div>
+            <p class="text-sm text-[#3F4B47]">{{ selected.preparation_time }} · {{ selected.delivery_preference_label|lower }}{% if selected.delivery_cost %} (+ {{ selected.delivery_cost_currency }} {{ selected.delivery_cost|floatformat:"2g" }}){% endif %} · válido hasta {{ selected.valid_until|date:"j b" }}</p>
+            {% if selected.quote_status == 'quoted' %}
+                <span class="self-start inline-flex items-center gap-1.5 rounded-full bg-[#E7EEFD] px-2.5 py-0.5 text-xs font-bold text-[#1E4FC2]">Esperando que {{ selected.customer_name|truncatewords:1 }} lo acepte</span>
+            {% elif selected.quote_status == 'accepted' %}
+                <span class="self-start inline-flex items-center gap-1.5 rounded-full bg-[#E2F0EA] px-2.5 py-0.5 text-xs font-bold text-[#0A5141]">Aceptado</span>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -27,7 +27,6 @@ class ConversationQuerySet(models.QuerySet):
     def pending(self):
         latest_sender = (
             Message.objects.filter(conversation=OuterRef('pk'))
-            .exclude(sender=Message.Sender.SYSTEM)
             .order_by('-created_at', '-pk')
             .values('sender')[:1]
         )

@@ -1,0 +1,9 @@
+{% with name=prescription_name|lower %}
+    {% if '.png' in name or '.jpg' in name or '.jpeg' in name or '.webp' in name %}
+        <img src="{{ prescription_url }}" alt="" class="prescription-preview__image">
+    {% else %}
+        <div class="prescription-preview__embed" aria-hidden="true">
+            <iframe src="{{ prescription_url }}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" title="" class="prescription-preview__iframe" tabindex="-1"></iframe>
+        </div>
+    {% endif %}
+{% endwith %}

@@ -9,6 +9,7 @@ def open_conversation(
     *,
     formula='Crema',
     trade_name='Abrate',
+    delivery_preferences=('pickup',),
 ):
     ClientAccount.objects.get_or_create(user=customer)
     account = PharmacyAccount.objects.filter(user=pharmacy_user).first()
@@ -24,7 +25,7 @@ def open_conversation(
             presentation='30 g',
             formula=formula,
             urgency='no_rush',
-            delivery_preferences=('pickup',),
+            delivery_preferences=delivery_preferences,
             note='',
         ),
     )

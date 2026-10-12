@@ -16,12 +16,16 @@
                         <span aria-label="Código del pedido. Sale del pedido.">—</span>
                     {% endif %}
                 </nav>
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
-                    <h1 class="text-3xl font-bold tracking-tight leading-tight">Chat con farmacias</h1>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-bold bg-[#E7EEFD] text-[#1E4FC2]">
-                        <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
-                        {% if order_progress %}{{ order_progress }}{% else %}—{% endif %}
-                    </span>
+                <div class="flex flex-col gap-1">
+                    <h1 class="text-3xl font-bold tracking-tight leading-tight">{% if formula %}{{ formula }}{% else %}Chat con farmacias{% endif %}</h1>
+                    <p class="text-sm text-[#51605A]">
+                        {% if quotes_total %}
+                            {{ quotes_received }} de {{ quotes_total }} presupuestos recibidos
+                        {% else %}
+                            Esperando presupuestos
+                        {% endif %}
+                        {% if order_progress %} · {{ order_progress }}{% endif %}
+                    </p>
                 </div>
             </div>
 
@@ -42,20 +46,12 @@
                             </dd>
                         </dl>
                         {% if prescription_url %}
-                            {% with name=prescription_name|lower %}
-                                <a href="{{ prescription_url }}" target="_blank" rel="noopener noreferrer" class="prescription-preview" aria-label="Abrir documento">
-                                    {% if '.png' in name or '.jpg' in name %}
-                                        <img src="{{ prescription_url }}" alt="" class="prescription-preview__image">
-                                    {% else %}
-                                        <div class="prescription-preview__embed" aria-hidden="true">
-                                            <iframe src="{{ prescription_url }}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" title="Vista previa de la receta" class="prescription-preview__iframe" tabindex="-1"></iframe>
-                                        </div>
-                                    {% endif %}
-                                    <span class="prescription-preview__overlay">
-                                        <span>{% heroicon_solid "arrow-top-right-on-square" size=30 %}</span>
-                                    </span>
-                                </a>
-                            {% endwith %}
+                            <a href="{{ prescription_url }}" target="_blank" rel="noopener noreferrer" class="prescription-preview" aria-label="Abrir documento">
+                                {% include 'chats/_prescription_thumbnail.html' with prescription_url=prescription_url prescription_name=prescription_name only %}
+                                <span class="prescription-preview__overlay">
+                                    <span>{% heroicon_solid "arrow-top-right-on-square" size=30 %}</span>
+                                </span>
+                            </a>
                         {% else %}
                             <div class="flex h-28 flex-col items-center justify-center gap-1.5 rounded-xl bg-[#ECEFED] text-[13px] font-semibold text-[#3F4B47]">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
@@ -77,8 +73,8 @@
                                 {% for conversation in conversations %}
                                     <tr>
                                         <td class="py-2 border-t border-base-300 font-semibold">{{ conversation.pharmacy_name }}</td>
-                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
-                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">—</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">{% if conversation.quote_price %}{{ conversation.quote_currency }} {{ conversation.quote_price|floatformat:"2g" }}{% else %}—{% endif %}</td>
+                                        <td class="py-2 border-t border-base-300 text-right text-[#51605A]">{{ conversation.preparation_time|default:"—" }}</td>
                                     </tr>
                                 {% empty %}
                                     <tr>

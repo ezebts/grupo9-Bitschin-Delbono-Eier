@@ -29,7 +29,6 @@
                     Nueva solicitud
                 </a>
                 <a href="{% url 'orders:list' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold {% if request.resolver_match.namespace == 'orders' and request.resolver_match.url_name == 'list' %}bg-base-200{% else %}text-[#3F4B47]{% endif %}" {% if request.resolver_match.namespace == 'orders' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>Mis pedidos</a>
-                <a href="{% url 'home' %}" class="inline-flex items-center min-h-11 px-4 rounded-full font-semibold text-[#3F4B47]">Pedido en curso</a>
             </nav>
             <a href="{% url 'profile' %}" class="inline-flex items-center gap-2.5 min-h-11 pl-1 pr-3.5 rounded-full font-semibold {% if request.resolver_match.url_name == 'profile' %}bg-[#E2F0EA] text-[#0A5141]{% else %}text-[#3F4B47]{% endif %}" {% if request.resolver_match.url_name == 'profile' %}aria-current="page"{% endif %}>
                 <span aria-hidden="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#12201B] text-white text-sm font-bold">{{ user.get_initials|default:"C" }}</span>

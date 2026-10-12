@@ -14,9 +14,22 @@
             const messages = document.querySelector('[data-messages]')
             if (messages) messages.scrollTop = messages.scrollHeight
         }
+        function clearDeliveryCost(form) {
+            const home = form.querySelector('input[name="delivery_preferences"][value="home_delivery"]')
+            const cost = form.querySelector('[name="delivery_cost"]')
+            if (!home || !cost || home.checked) return
+            cost.value = ''
+        }
+        document.querySelectorAll('[data-quote-form]').forEach(clearDeliveryCost)
+        document.addEventListener('change', (event) => {
+            if (event.target.name !== 'delivery_preferences') return
+            const form = event.target.closest('[data-quote-form]')
+            if (form) clearDeliveryCost(form)
+        })
         pinMessages()
         document.body.addEventListener('htmx:afterSwap', () => {
             pinMessages()
+            document.querySelectorAll('[data-quote-form]').forEach(clearDeliveryCost)
             document.querySelector('[data-chat-form] textarea')?.focus()
         })
         document.addEventListener('keydown', (event) => {

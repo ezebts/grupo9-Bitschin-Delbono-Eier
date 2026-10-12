@@ -9,7 +9,48 @@
 
 @layer components {
   .prescription-preview {
-    @apply relative isolate block h-28 w-full overflow-hidden rounded-xl bg-[#ECEFED];
+    @apply relative isolate block overflow-hidden bg-[#ECEFED];
+  }
+
+  .prescription-preview:not(.prescription-preview--compact) {
+    @apply h-28 w-full rounded-xl;
+  }
+
+  .prescription-preview--compact {
+    width: 96px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+
+  .quote-request-meta {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .quote-request-meta dt {
+    color: #51605a;
+    font-weight: 400;
+  }
+
+  .quote-request-meta dd {
+    margin: 2px 0 0;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .quote-request-attachment {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid #dce2de;
+    border-radius: 12px;
   }
 
   .prescription-preview__embed {
