@@ -110,6 +110,8 @@ SOCIALACCOUNT_PROVIDERS = {
     },
 }
 
+DEMO_PHARMACY_PASSWORD = config('DEMO_PHARMACY_PASSWORD', default='')
+
 
 # Authentication - Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators

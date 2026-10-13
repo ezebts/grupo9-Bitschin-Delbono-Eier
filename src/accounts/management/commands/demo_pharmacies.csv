@@ -1,0 +1,31 @@
+name,kind,address,locality,postal_code,latitude,longitude,hours,delivery_cost,preparations
+Farmacia del Centro,pharmacy_with_lab,Bv. Santa Fe 120,Rafaela,2300,-31.2510,-61.4900,long,1500,capsules creams syrups
+Magistral Rafaela,preparation_lab,Sarmiento 455,Rafaela,2300,-31.2460,-61.4950,lab,2000,capsules hormonal gluten_free
+Farmacia San Martín,pharmacy_with_lab,San Martín 870,Rafaela,2300,-31.2600,-61.5040,store,,creams dermatology
+Farmacia Barrio Norte,pharmacy_with_lab,Av. Brasil 1320,Rafaela,2300,-31.2340,-61.4780,always,1200,solutions syrups ovules
+Laboratorio Fórmula Oeste,preparation_lab,Bv. Roca 2150,Rafaela,2300,-31.2780,-61.4650,lab,,capsules creams solutions veterinary
+Farmacia Pueyrredón,pharmacy_with_lab,Av. Italia 1890,Rafaela,2300,-31.2200,-61.5250,store,1800,creams gluten_free
+Farmacia Villa Rosas,pharmacy_with_lab,Bv. Lehmann 3400,Rafaela,2300,-31.2900,-61.5500,long,,capsules dermatology
+Farmacia Bella Italia,pharmacy_with_lab,San Martín 210,Bella Italia,2301,-31.2860,-61.4140,store,2500,syrups veterinary
+Farmacia Sunchales,pharmacy_with_lab,Av. Belgrano 450,Sunchales,2322,-30.9440,-61.5610,long,3000,capsules creams
+Farmacia Colonia,pharmacy_with_lab,Av. 25 de Mayo 1650,Esperanza,3080,-31.4490,-60.9310,store,2200,creams solutions hormonal
+Laboratorio Esperanza Magistral,preparation_lab,Aaron Castellanos 980,Esperanza,3080,-31.4430,-60.9250,lab,,capsules ovules hormonal
+Farmacia Bulevar Gálvez,pharmacy_with_lab,Bv. Gálvez 1520,Santa Fe,3000,-31.6290,-60.6980,always,2000,capsules creams syrups dermatology
+Laboratorio Litoral,preparation_lab,San Jerónimo 2830,Santa Fe,3000,-31.6420,-60.7060,lab,2500,capsules solutions hormonal gluten_free
+Farmacia Candioti,pharmacy_with_lab,Av. Rivadavia 3210,Santa Fe,3000,-31.6240,-60.6910,store,,creams ovules
+Farmacia Santo Tomé,pharmacy_with_lab,Av. 7 de Marzo 1950,Santo Tomé,3016,-31.6650,-60.7650,long,1900,syrups solutions
+Farmacia Costanera Paraná,pharmacy_with_lab,San Martín 760,Paraná,3100,-31.7320,-60.5290,store,2800,creams dermatology gluten_free
+Farmacia San Francisco,pharmacy_with_lab,Bv. 25 de Mayo 1420,San Francisco,2400,-31.4280,-62.0830,long,2400,capsules creams veterinary
+Farmacia San Jorge,pharmacy_with_lab,Av. Alberdi 1130,San Jorge,2451,-31.8960,-61.8600,store,,syrups
+Laboratorio El Trébol,preparation_lab,Av. San Martín 820,El Trébol,2535,-32.2000,-61.7020,lab,3500,capsules creams veterinary
+Farmacia Gálvez,pharmacy_with_lab,Av. Mitre 640,Gálvez,2252,-32.0300,-61.2210,store,2600,creams solutions
+Farmacia San Justo,pharmacy_with_lab,Iturraspe 2310,San Justo,3040,-30.7890,-60.5920,long,,capsules ovules
+Farmacia San Cristóbal,pharmacy_with_lab,Av. Pellegrini 950,San Cristóbal,3070,-30.3100,-61.2370,store,3200,syrups gluten_free
+Laboratorio Norte Ceres,preparation_lab,Av. Belgrano 310,Ceres,2340,-29.8810,-61.9450,lab,,capsules solutions dermatology
+Farmacia Morteros,pharmacy_with_lab,Bv. Eva Perón 520,Morteros,2421,-30.7110,-62.0060,store,2700,creams hormonal
+Farmacia Coronda,pharmacy_with_lab,San Martín 1240,Coronda,2240,-31.9730,-60.9180,long,,syrups solutions
+Farmacia Cañada,pharmacy_with_lab,Bv. Balcarce 960,Cañada de Gómez,2500,-32.8160,-61.3940,store,3800,capsules creams gluten_free
+Laboratorio Rosario Magistral,preparation_lab,Córdoba 2140,Rosario,2000,-32.9470,-60.6390,lab,4500,capsules creams solutions hormonal ovules
+Farmacia Villa María,pharmacy_with_lab,Bv. España 410,Villa María,5900,-32.4100,-63.2400,always,4000,creams dermatology syrups
+Farmacia Crespo,pharmacy_with_lab,Av. Independencia 1180,Crespo,3116,-32.0280,-60.3060,store,,capsules veterinary
+Farmacia Vera,pharmacy_with_lab,Av. Lisandro de la Torre 760,Vera,3550,-29.4600,-60.2130,store,3600,syrups creams

@@ -33,6 +33,8 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      - key: DEMO_PHARMACY_PASSWORD
+        sync: false
 
 databases:
   - name: magistral-db
