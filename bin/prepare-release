@@ -3,4 +3,5 @@ set -eu
 
 uv run --no-sync python src/manage.py prepare_release
 uv run --no-sync python src/manage.py migrate --noinput
+uv run --no-sync python src/manage.py load_adhered_pharmacies
 uv run --no-sync python src/manage.py prepare_release
