@@ -22,11 +22,10 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from app.views import healthz, home
+from app.views import home
 
 urlpatterns = [
     path('', home, name='home'),
-    path('healthz/', healthz, name='healthz'),
     path('chats/', include('chats.urls')),
     path('orders/', include('orders.urls')),
     path('accounts/', include('accounts.urls')),
