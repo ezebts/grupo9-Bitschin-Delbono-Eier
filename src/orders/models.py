@@ -4,6 +4,8 @@ from django.utils import timezone
 
 from orders.exceptions import (
     ExpiredQuoteError,
+    InvalidEstimatedDateError,
+    OrderCannotAdvanceError,
     QuoteCannotBeAnsweredError,
     QuoteCannotBeEditedError,
     QuoteCannotBeSubmittedError,
@@ -49,8 +51,22 @@ class OrderProgress(models.TextChoices):
     FINISHED = 'finished', 'Finalizado'
 
 
+class FulfillmentStatus(models.TextChoices):
+    ACCEPTED = 'accepted', 'Presupuesto aceptado'
+    IN_PREPARATION = 'in_preparation', 'En preparación'
+    READY_FOR_PICKUP = 'ready_for_pickup', 'Listo para retirar'
+    DELIVERED = 'delivered', 'Entregado'
+
+
 class OrderQuerySet(models.QuerySet):
     def with_progress(self):
+
+        has_delivered = Exists(
+            StatusEvent.objects.filter(
+                order=OuterRef('pk'),
+                status=FulfillmentStatus.DELIVERED,
+            )
+        )
 
         has_accepted = Exists(
             QuoteRequest.objects.filter(
@@ -67,10 +83,12 @@ class OrderQuerySet(models.QuerySet):
         )
 
         return self.alias(
+            has_delivered=has_delivered,
             has_accepted=has_accepted,
             has_quoted=has_quoted,
         ).annotate(
             progress_code=Case(
+                When(has_delivered=True, then=Value(OrderProgress.FINISHED)),
                 When(has_accepted=True, then=Value(OrderProgress.IN_PROGRESS)),
                 When(has_quoted=True, then=Value(OrderProgress.QUOTED)),
                 default=Value(OrderProgress.WAITING),
@@ -179,12 +197,51 @@ class Order(models.Model):
 
     @property
     def progress(self):
+        if self.fulfillment_status == FulfillmentStatus.DELIVERED:
+            return OrderProgress.FINISHED
         statuses = {quote.status for quote in self.quote_requests.all()}
         if QuoteRequestStatus.ACCEPTED in statuses:
             return OrderProgress.IN_PROGRESS
         if QuoteRequestStatus.QUOTED in statuses:
             return OrderProgress.QUOTED
         return OrderProgress.WAITING
+
+    @property
+    def fulfillment_status(self):
+        event = self.status_events.last()
+        return FulfillmentStatus(event.status) if event else None
+
+    def fulfillment_label(self, status):
+        if (
+            status == FulfillmentStatus.READY_FOR_PICKUP
+            and DeliveryPreference.PICKUP not in self.delivery_preferences
+        ):
+            return 'En camino'
+        return FulfillmentStatus(status).label
+
+    def mark_accepted(self):
+        return StatusEvent(order=self, status=FulfillmentStatus.ACCEPTED)
+
+    @property
+    def next_fulfillment_status(self):
+        current = self.fulfillment_status
+        if current is None or current == FulfillmentStatus.DELIVERED:
+            return None
+        statuses = list(FulfillmentStatus)
+        return statuses[statuses.index(current) + 1]
+
+    def advance_fulfillment(self, estimated_at, today):
+        status = self.next_fulfillment_status
+        if status is None:
+            raise OrderCannotAdvanceError
+
+        if status != FulfillmentStatus.IN_PREPARATION:
+            return StatusEvent(order=self, status=status)
+
+        if estimated_at is None or estimated_at < today:
+            raise InvalidEstimatedDateError
+
+        return StatusEvent(order=self, status=status, estimated_at=estimated_at)
 
 
 class QuoteRequest(models.Model):
@@ -307,3 +364,23 @@ class QuoteRequest(models.Model):
             pharmacy=pharmacy,
             status=QuoteRequestStatus.WAITING,
         )
+
+
+class StatusEvent(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='status_events',
+    )
+
+    status = models.CharField(max_length=32, choices=FulfillmentStatus.choices)
+
+    estimated_at = models.DateField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('created_at', 'pk')
+
+    def __str__(self):
+        return f'{self.order.code} → {self.get_status_display()}'

@@ -23,6 +23,9 @@ def accept_quote(user_id, conversation_id):
     quote_request.accept_quote(datetime.now(user.timezone).date())
     quote_request.save(update_fields=['status'])
 
+    event = quote_request.order.mark_accepted()
+    event.save()
+
     conversation = quote_request.conversation
     message = conversation.send_system_message('El cliente aceptó el presupuesto.')
     message.save()

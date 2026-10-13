@@ -94,7 +94,11 @@
                     typed = { number: text.match(/(\d+)\s*(,|$)/)?.[1] || '', road: null }
                     const places = await this.request('search', { q: text, countrycodes: 'ar', limit: 5 })
                     if (!places) return
-                    this.places = places
+                    this.places = places.map((place) => {
+                        const road = place.street || place.name || ''
+                        if (!typed.number || place.housenumber || !road || road.includes(typed.number)) return place
+                        return { ...place, label: place.label.replace(road, `${road} ${typed.number}`), numbered: true }
+                    })
                     this.active = places.length ? 0 : -1
                     if (!places.length) this.error = 'No encontramos esa dirección. Probá con calle y altura, o con el barrio.'
                 },
@@ -111,7 +115,7 @@
                     this.active = -1
                 },
                 choose(place) {
-                    const { label, name, street, district, city, postcode, latitude, longitude } = place
+                    const { label, name, street, district, city, state, postcode, latitude, longitude } = place
                     const road = street || name || ''
                     typed.road ??= road
                     const number = typed.road === road && !road.includes(typed.number) ? typed.number : ''
@@ -129,6 +133,25 @@
                     this.$refs.text.value = this.$refs.address ? text : (address || this.$refs.text.value)
                     this.mark(latitude, longitude)
                     this.close()
+                    if (place.numbered) this.locateNumber(address, locality, state)
+                },
+                async locateNumber(address, locality, province) {
+                    const query = new URLSearchParams({ direccion: address, localidad_censal: locality, max: 1 })
+                    if (province) query.set('provincia', province)
+                    try {
+                        const response = await fetch(`https://apis.datos.gob.ar/georef/api/direcciones?${query}`)
+                        const { direcciones = [] } = await response.json()
+                        const { lat, lon } = direcciones[0]?.ubicacion || {}
+                        if (lat == null || lon == null) return
+                        this.fill({
+                            latitude: lat,
+                            longitude: lon,
+                            address,
+                            locality,
+                            postal_code: this.$refs.postal_code.value,
+                        })
+                        this.mark(lat, lon)
+                    } catch {}
                 },
                 async pin(latitude, longitude, fallback = 'Punto elegido en el mapa') {
                     this.mark(latitude, longitude)

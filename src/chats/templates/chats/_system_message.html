@@ -1,0 +1,9 @@
+{% if message.estimated_at %}
+    <div class="self-center flex flex-col gap-1 px-4 py-2.5 rounded-2xl bg-[#ECEFED] text-[13px] text-[#3F4B47]">
+        <span>{{ message.body }}</span>
+        <span>Fecha estimada: {{ message.estimated_at|date:"d/m" }}</span>
+        <time class="self-end text-xs text-[#51605A]">{{ message.created_at|date:"d/m H:i" }}</time>
+    </div>
+{% else %}
+    <p class="self-center inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECEFED] text-[13px] text-[#3F4B47]">{{ message.body }} · <time>{{ message.created_at|date:"d/m H:i" }}</time></p>
+{% endif %}

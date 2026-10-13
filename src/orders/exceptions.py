@@ -29,6 +29,16 @@ class ExpiredQuoteError(Error):
 
 
 @dataclass(frozen=True)
+class OrderCannotAdvanceError(Error):
+    message = 'Este pedido ya no se puede avanzar.'
+
+
+@dataclass(frozen=True)
+class InvalidEstimatedDateError(Error):
+    message = 'Indicá una fecha estimada desde hoy en adelante.'
+
+
+@dataclass(frozen=True)
 class InvalidQuotePriceError(Error):
     message = 'Ingresá un monto mayor a cero.'
 

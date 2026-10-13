@@ -26,13 +26,13 @@ classDiagram
         +attach_prescription(file)
         +progress() OrderProgress
         +cancel()
-        +startPreparation(estimatedAt, note)
-        +completePreparation()
-        +dispatch()
+        +markAccepted() StatusEvent
+        +advanceFulfillment(estimatedAt, today) StatusEvent
+        +fulfillmentLabel(status) str
     }
     class StatusEvent {
-        estimatedAt: datetime
-        note: str
+        estimatedAt: date
+        createdAt: datetime
     }
     class QuoteRequest {
         orderId: int

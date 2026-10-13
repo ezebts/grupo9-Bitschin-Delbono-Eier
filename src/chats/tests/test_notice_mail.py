@@ -8,6 +8,8 @@ from accounts.models import MailPreferences, PharmacyMailPreferences, User
 from chats.commands.send_message import send_message
 from chats.commands.send_notice_mail import send_order_status_notice
 from chats.tests.support import open_conversation
+from orders.commands.accept_quote import accept_quote
+from orders.commands.advance_order import AdvanceOrderParams, advance_order
 from orders.commands.submit_quote import submit_quote
 from orders.models import QuoteRequestStatus
 from orders.tests.test_quote_management import _params
@@ -111,7 +113,7 @@ def test_client_messages_email_the_pharmacy_at_most_every_15_minutes(
     assert 'Sofía Martínez' in mail.outbox[0].body
 
 
-def test_accepting_a_quote_mails_the_pharmacy_and_the_client(
+def test_accepting_a_quote_mails_only_the_pharmacy(
     django_capture_on_commit_callbacks,
 ):
     customer, _pharmacy_user, conversation = _conversation()
@@ -126,11 +128,9 @@ def test_accepting_a_quote_mails_the_pharmacy_and_the_client(
         [
             'Aceptaron tu presupuesto',
             'El cliente aceptó tu presupuesto',
-            'Tu pedido está en preparación',
         ],
     )
-    client_mail = next(item for item in mail.outbox if item.to == [customer.email])
-    assert 'en preparación' in client_mail.body
+    assert all(item.to != [customer.email] for item in mail.outbox)
 
 
 def test_rejecting_a_quote_mails_only_the_pharmacy(
@@ -198,3 +198,20 @@ def test_order_status_mail_respects_the_client_preference():
     send_order_status_notice(conversation.id, 'entregado')
 
     assert mail.outbox == []
+
+
+def test_moving_an_order_mails_the_client(django_capture_on_commit_callbacks):
+    customer, pharmacy_user, conversation = _conversation()
+    submit_quote(pharmacy_user.id, conversation.id, _params())
+    accept_quote(customer.id, conversation.id)
+    estimated_at = timezone.localdate() + timedelta(days=2)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        advance_order(
+            pharmacy_user.id,
+            conversation.id,
+            AdvanceOrderParams(estimated_at=estimated_at),
+        )
+
+    assert [item.subject for item in mail.outbox] == ['Tu pedido está en preparación']
+    assert mail.outbox[0].to == [customer.email]

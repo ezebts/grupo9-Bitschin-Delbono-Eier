@@ -37,4 +37,9 @@ urlpatterns = [
         views.WithdrawQuoteView.as_view(),
         name='withdraw_quote',
     ),
+    path(
+        'conversations/<int:conversation_id>/order/advance/',
+        views.AdvanceOrderView.as_view(),
+        name='advance_order',
+    ),
 ]
