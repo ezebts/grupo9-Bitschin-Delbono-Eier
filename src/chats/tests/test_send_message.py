@@ -55,7 +55,10 @@ def test_post_records_the_author_and_the_text(customer, conversation):
         customer.get_full_name() or customer.email,
     )
     assert message.is_customer
-    assert conversation.messages.get().pk == message.pk
+    assert list(conversation.messages.values_list('body', flat=True)) == [
+        'La solicitud también llega por mail',
+        '¿Ya está lista mi crema?',
+    ]
 
 
 def test_pharmacy_cannot_post_in_another_conversation(customer, pharmacy):
@@ -65,7 +68,9 @@ def test_pharmacy_cannot_post_in_another_conversation(customer, pharmacy):
     with pytest.raises(Conversation.DoesNotExist):
         send_message(pharmacy.id, other_conversation.id, 'Mensaje no autorizado')
 
-    assert other_conversation.messages.count() == 0
+    assert list(other_conversation.messages.values_list('body', flat=True)) == [
+        'La solicitud también llega por mail',
+    ]
 
 
 def test_customer_cannot_post_in_another_conversation(customer, pharmacy):
@@ -80,7 +85,9 @@ def test_customer_cannot_post_in_another_conversation(customer, pharmacy):
     with pytest.raises(Conversation.DoesNotExist):
         send_message(customer.id, other_conversation.id, 'Mensaje no autorizado')
 
-    assert other_conversation.messages.count() == 0
+    assert list(other_conversation.messages.values_list('body', flat=True)) == [
+        'La solicitud también llega por mail',
+    ]
 
 
 def test_customer_message_waits_for_the_pharmacy(customer, pharmacy):
@@ -123,5 +130,5 @@ def test_system_message_is_not_a_user_message(customer, pharmacy):
 
     assert opened.messages[-1].is_system
     assert opened.messages[-1].body == 'Enviamos tu solicitud por mail a la farmacia'
-    assert opened.messages[0].is_customer
+    assert opened.messages[1].is_customer
     assert not inbox.conversations[0].waiting_for_pharmacy

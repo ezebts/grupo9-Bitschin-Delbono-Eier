@@ -58,6 +58,8 @@
                             {% include "shared/_field.html" with field=form.phone %}
                             {% include "shared/_field.html" with field=form.website %}
                         </div>
+                        {% include "accounts/_checkbox.html" with field=form.mail_on_reply %}
+                        {% include "accounts/_checkbox.html" with field=form.mail_on_quote_status %}
                     </section>
                     <section class="bg-base-100 border border-base-300 rounded-3xl p-7 space-y-4">
                         <h2 class="text-2xl font-semibold">Ubicación</h2>

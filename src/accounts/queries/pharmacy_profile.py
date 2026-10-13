@@ -4,6 +4,7 @@ from accounts.models import (
     Cuit,
     DeliveryTerms,
     OpeningHours,
+    PharmacyMailPreferences,
     PreparationTag,
     User,
 )
@@ -30,6 +31,7 @@ class PharmacyAccountProfile:
     opening_hours: OpeningHours | None
     delivery_terms: DeliveryTerms | None
     preparation_tags: set[PreparationTag]
+    mail_preferences: PharmacyMailPreferences | None
 
 
 def get_account_pharmacy_profile(user_id):
@@ -58,4 +60,5 @@ def get_account_pharmacy_profile(user_id):
         opening_hours=pharmacy.opening_hours,
         delivery_terms=pharmacy.delivery_terms,
         preparation_tags=pharmacy.preparation_tags,
+        mail_preferences=pharmacy.mail_preferences,
     )

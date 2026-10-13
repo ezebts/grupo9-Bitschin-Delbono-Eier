@@ -58,6 +58,10 @@ class Conversation(models.Model):
 
     updated_at = models.DateTimeField(auto_now=True)
 
+    client_notified_at = models.DateTimeField(null=True, blank=True)
+
+    pharmacy_notified_at = models.DateTimeField(null=True, blank=True)
+
     objects = ConversationQuerySet.as_manager()
 
     class Meta:

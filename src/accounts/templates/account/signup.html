@@ -5,24 +5,37 @@
 {% block content %}
     <div class="space-y-2">
         <h2 class="text-3xl font-bold">Creá tu cuenta</h2>
-        <p class="text-base-content/70">La forma más rápida es con Google: después solo te pedimos tu rol.</p>
+        {% if form.invitation_link.value %}
+            <p class="text-base-content/70">Completá tu nombre y una contraseña para ver la solicitud.</p>
+        {% else %}
+            <p class="text-base-content/70">La forma más rápida es con Google: después solo te pedimos tu rol.</p>
+        {% endif %}
     </div>
 
-    {% include "accounts/_google_button.html" with label="Registrarte con Google" %}
-
-    <div class="divider">o con tu email</div>
+    {% if not form.invitation_link.value %}
+        {% include "accounts/_google_button.html" with label="Registrarte con Google" %}
+        <div class="divider">o con tu email</div>
+    {% endif %}
 
     <form method="post" action="{% url 'account_signup' %}" class="space-y-2">
         {% csrf_token %}
         {% for error in form.non_field_errors %}
             <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
         {% endfor %}
-        {% include "accounts/_role_field.html" with field=form.role %}
+        {% if form.invitation_link.value %}
+            {{ form.role.as_hidden }}
+            {{ form.email.as_hidden }}
+            {{ form.invitation_link }}
+        {% else %}
+            {% include "accounts/_role_field.html" with field=form.role %}
+        {% endif %}
         <div class="grid sm:grid-cols-2 gap-x-3">
             {% include "shared/_field.html" with field=form.first_name %}
             {% include "shared/_field.html" with field=form.last_name %}
         </div>
-        {% include "shared/_field.html" with field=form.email %}
+        {% if not form.invitation_link.value %}
+            {% include "shared/_field.html" with field=form.email %}
+        {% endif %}
         {% include "shared/_field.html" with field=form.password1 %}
         {% include "shared/_field.html" with field=form.password2 %}
         {{ redirect_field }}

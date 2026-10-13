@@ -11,6 +11,7 @@ from accounts.models import (
     DeliveryTerms,
     OpeningHours,
     PharmacyKind,
+    PharmacyMailPreferences,
     PreparationTag,
 )
 from accounts.queries.pharmacy_profile import PharmacyAccountProfile
@@ -67,6 +68,21 @@ class PharmacyDetailsForm(TypedForm):
     phone = forms.CharField(label='Teléfono', max_length=30, required=False)
 
     website = forms.URLField(label='Sitio web', required=False, assume_scheme='https')
+
+    mail_on_reply = forms.BooleanField(
+        label='Cuando un cliente responde o envía un mensaje',
+        required=False,
+        help_text=(
+            'Acepta o rechaza un presupuesto, o escribe en el chat. '
+            'Un mail por conversación, como máximo cada 15 minutos.'
+        ),
+    )
+
+    mail_on_quote_status = forms.BooleanField(
+        label='Cuando cambia el estado de mi presupuesto',
+        required=False,
+        help_text='El cliente me la aceptó o me la rechazó.',
+    )
 
     address = forms.CharField(label='Dirección', max_length=200, required=False)
 
@@ -157,6 +173,14 @@ class PharmacyDetailsForm(TypedForm):
             'request_email': profile.request_email,
             'phone': profile.phone.number if profile.phone else '',
             'website': profile.website,
+            'mail_on_reply': (
+                profile.mail_preferences.on_reply if profile.mail_preferences else True
+            ),
+            'mail_on_quote_status': (
+                profile.mail_preferences.on_quote_status
+                if profile.mail_preferences
+                else True
+            ),
             'address': profile.location.address if profile.location else '',
             'locality': profile.location.locality if profile.location else '',
             'postal_code': profile.location.postal_code if profile.location else '',
@@ -336,7 +360,18 @@ class PharmacyProfileForm(PharmacyDetailsForm, PharmacyServiceForm):
         self._clean_location(cleaned)
         self._clean_opening_hours(cleaned)
         self._clean_delivery_terms(cleaned)
+        self._clean_mail_preferences(cleaned)
         return cleaned
+
+    def _clean_mail_preferences(self, cleaned):
+        mail_fields = ('mail_on_reply', 'mail_on_quote_status')
+        if not all(field in cleaned for field in mail_fields):
+            return
+
+        cleaned['mail_preferences'] = PharmacyMailPreferences(
+            on_reply=cleaned['mail_on_reply'],
+            on_quote_status=cleaned['mail_on_quote_status'],
+        )
 
     @property
     def cleaned_params(self):
@@ -357,6 +392,7 @@ class PharmacyProfileForm(PharmacyDetailsForm, PharmacyServiceForm):
             opening_hours=data['opening_hours'],
             delivery_terms=data['delivery_terms'],
             preparation_tags=data['preparation_tags'],
+            mail_preferences=data['mail_preferences'],
         )
 
     @classmethod

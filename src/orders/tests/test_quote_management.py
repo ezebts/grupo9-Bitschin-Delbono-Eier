@@ -76,6 +76,7 @@ def test_pharmacy_can_send_and_edit_a_quote_for_its_conversation():
 
     conversation.refresh_from_db()
     assert list(conversation.messages.values_list('body', flat=True)) == [
+        'La solicitud también llega por mail',
         'La farmacia envió un presupuesto.',
         'La farmacia actualizó el presupuesto.',
     ]

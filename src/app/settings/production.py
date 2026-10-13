@@ -2,6 +2,17 @@ from .base import *
 
 DEBUG = False
 
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='Magistral <notificaciones@localhost>',
+)
+
+MAILERS = {
+    'default': {
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+    },
+}
+
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 TEMPLATES = [

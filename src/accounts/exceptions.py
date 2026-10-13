@@ -6,6 +6,11 @@ from shared.exceptions import Error
 
 
 @dataclass(frozen=True)
+class InvalidInvitationLinkError(Error):
+    message = _('El enlace de invitación no es válido.')
+
+
+@dataclass(frozen=True)
 class InvalidCuitError(Error):
     message = _('El CUIT no es válido.')
 

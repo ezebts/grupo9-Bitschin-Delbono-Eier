@@ -18,6 +18,7 @@ from accounts.models import (
     OpeningHours,
     Pharmacy,
     PharmacyAccount,
+    PharmacyMailPreferences,
     PreparationTag,
     User,
 )
@@ -71,6 +72,10 @@ def pharmacy_profile_params():
             base_cost=Money.ARS(1500),
         ),
         preparation_tags={PreparationTag.CAPSULES, PreparationTag.CREAMS},
+        mail_preferences=PharmacyMailPreferences(
+            on_reply=False,
+            on_quote_status=True,
+        ),
     )
 
 
@@ -129,6 +134,7 @@ def test_pharmacy_updates_profile(pharmacy_account, pharmacy_profile_params):
     assert pharmacy.delivery_terms == pharmacy_profile_params.delivery_terms
 
     assert pharmacy.preparation_tags == pharmacy_profile_params.preparation_tags
+    assert pharmacy.mail_preferences == pharmacy_profile_params.mail_preferences
 
 
 def test_pharmacy_becomes_visible_when_it_can_be_found(

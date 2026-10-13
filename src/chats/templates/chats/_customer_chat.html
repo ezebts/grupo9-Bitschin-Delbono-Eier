@@ -1,5 +1,6 @@
-{% load widget_tweaks %}
+{% load tz widget_tweaks %}
 <div id="customer-chat" class="contents">
+{% timezone request.user.timezone %}
     <section aria-labelledby="farm-titulo" class="flex-1 min-w-64 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 overflow-y-auto bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
         <h2 id="farm-titulo" class="px-1 pt-1 pb-2 text-[15px] font-bold">Farmacias contactadas · {{ conversations|length }}</h2>
         {% for conversation in conversations %}
@@ -67,7 +68,6 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
                     </button>
                 </div>
-                <p class="text-[13px] text-[#51605A]">La farmacia recibe cada mensaje tuyo por mail.</p>
                 {% for error in form.message.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
             </form>
         {% else %}
@@ -76,4 +76,5 @@
             </div>
         {% endif %}
     </section>
+{% endtimezone %}
 </div>

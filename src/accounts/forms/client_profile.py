@@ -64,11 +64,6 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
         help_text='En preparación, listo para retirar, entregado.',
     )
 
-    mail_on_quote_expiry = forms.BooleanField(
-        label='Recordatorio si un presupuesto está por vencer',
-        required=False,
-    )
-
     def clean_first_name(self):
         return self.cleaned_data['first_name'].strip()
 
@@ -125,14 +120,13 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
             self.add_error('postal_code', error)
 
     def _clean_mail_preferences(self, cleaned):
-        mail_fields = ('mail_on_reply', 'mail_on_status_change', 'mail_on_quote_expiry')
+        mail_fields = ('mail_on_reply', 'mail_on_status_change')
         if not all(field in cleaned for field in mail_fields):
             return
 
         cleaned['mail_preferences'] = MailPreferences(
             on_reply=cleaned['mail_on_reply'],
             on_status_change=cleaned['mail_on_status_change'],
-            on_quote_expiry=cleaned['mail_on_quote_expiry'],
         )
 
     @property
@@ -174,5 +168,4 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
             'search_radius': profile.search_radius or '',
             'mail_on_reply': mail.on_reply if mail else True,
             'mail_on_status_change': mail.on_status_change if mail else True,
-            'mail_on_quote_expiry': mail.on_quote_expiry if mail else True,
         }

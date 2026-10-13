@@ -15,6 +15,7 @@ classDiagram
     OpeningHours *-- TimeSlot
     Pharmacy *-- DeliveryTerms
     Pharmacy *-- PreparationTag
+    Pharmacy *-- PharmacyMailPreferences
     PharmacyAccount *-- Cuit
     DeliveryTerms *-- Money
 
@@ -44,6 +45,7 @@ classDiagram
         +updateOpeningHours(openingHours)
         +updateDeliveryTerms(deliveryTerms)
         +updatePreparationTags(preparationTags)
+        +updateMailPreferences(mailPreferences)
     }
     class PharmacyAccount {
         legalName: str
@@ -79,7 +81,12 @@ classDiagram
         <<value>>
         onReply: bool
         onStatusChange: bool
-        onQuoteExpiry: bool
+    }
+    class PharmacyMailPreferences {
+        <<value>>
+        onReply: bool
+        onQuoteStatus: bool
+        +default() dict$
     }
     class PharmacyKind {
         <<enum>>
@@ -141,6 +148,15 @@ classDiagram
         KM5 = 5
         KM10 = 10
     }
+    class InvitationLink {
+        <<value>>
+        role: Role
+        email: str
+        nextUrl: str
+        details: dict
+        +__str__() str
+        +from_value(invitationLink) InvitationLink$
+    }
 
     classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
     class User:::model
@@ -153,6 +169,7 @@ classDiagram
     class Location:::model
     class Coordinates:::model
     class MailPreferences:::model
+    class PharmacyMailPreferences:::model
     class PharmacyKind:::model
     class Cuit:::model
     class TimeSlot:::model
@@ -160,3 +177,4 @@ classDiagram
     class DeliveryTerms:::model
     class Money:::model
     class PreparationTag:::model
+    class InvitationLink:::model

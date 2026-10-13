@@ -25,6 +25,16 @@ from shared.values import Coordinates, Location, Money, PhoneNumber, TimeSlot
 GEO_WGS84_LAT_LONG = 4326
 
 
+@dataclass(frozen=True)
+class PharmacyMailPreferences:
+    on_reply: bool
+    on_quote_status: bool
+
+    @classmethod
+    def default(cls):
+        return asdict(cls(on_reply=True, on_quote_status=True))
+
+
 class PharmacyKind(models.TextChoices):
     PHARMACY_WITH_LAB = 'pharmacy_with_lab', 'Farmacia con laboratorio magistral'
     PREPARATION_LAB = 'preparation_lab', 'Laboratorio de preparaciones'
@@ -210,6 +220,12 @@ class Pharmacy(models.Model):
         db_column='preparation_tags',
     )
 
+    _mail_preferences = models.JSONField(
+        default=PharmacyMailPreferences.default,
+        blank=True,
+        db_column='mail_preferences',
+    )
+
     objects = PharmacyQuerySet.as_manager()
 
     def __str__(self):
@@ -236,6 +252,10 @@ class Pharmacy(models.Model):
     @property
     def preparation_tags(self) -> set[PreparationTag]:
         return {PreparationTag(tag) for tag in self._preparation_tags}
+
+    @property
+    def mail_preferences(self) -> PharmacyMailPreferences | None:
+        return from_dict(PharmacyMailPreferences, self._mail_preferences)
 
     @property
     def is_laboratory(self):
@@ -274,6 +294,9 @@ class Pharmacy(models.Model):
         self.request_email = request_email
         self._phone = phone.number if phone else ''
         self.website = website
+
+    def update_mail_preferences(self, mail_preferences):
+        self._mail_preferences = asdict(mail_preferences)
 
     def update_location(self, location):
 

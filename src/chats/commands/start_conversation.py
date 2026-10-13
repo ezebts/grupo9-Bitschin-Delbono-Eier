@@ -5,7 +5,7 @@ from orders.models import QuoteRequest
 
 
 @transaction.atomic
-def start_conversation(user_id, quote_request_id):
+def start_conversation(user_id, quote_request_id) -> int:
     """Opens the conversation that belongs to one quote request."""
 
     quote_request = QuoteRequest.objects.select_related('order').get(
@@ -14,9 +14,11 @@ def start_conversation(user_id, quote_request_id):
     )
 
     try:
-        return quote_request.conversation
+        return quote_request.conversation.id
     except Conversation.DoesNotExist:
-        return Conversation.objects.create(
+        conversation = Conversation.objects.create(
             quote_request=quote_request,
             title=quote_request.order.formula[:200],
         )
+
+        return conversation.id

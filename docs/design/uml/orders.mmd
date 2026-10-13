@@ -54,6 +54,8 @@ classDiagram
     }
     class Conversation {
         title: str
+        clientNotifiedAt: datetime
+        pharmacyNotifiedAt: datetime
         +create(quoteRequestId, author, text, files) Conversation$
         +sendMessage(userId, displayName, text, files)
         +sendSystemMessage(text)

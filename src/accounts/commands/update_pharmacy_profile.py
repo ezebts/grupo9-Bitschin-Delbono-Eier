@@ -6,6 +6,7 @@ from accounts.models import (
     Cuit,
     DeliveryTerms,
     OpeningHours,
+    PharmacyMailPreferences,
     PreparationTag,
     User,
 )
@@ -29,6 +30,7 @@ class UpdatePharmacyProfileParams:
     opening_hours: OpeningHours | None
     delivery_terms: DeliveryTerms | None
     preparation_tags: set[PreparationTag]
+    mail_preferences: PharmacyMailPreferences
 
 
 @transaction.atomic
@@ -48,6 +50,7 @@ def update_pharmacy_profile(user_id, params: UpdatePharmacyProfileParams):
     pharmacy.update_opening_hours(params.opening_hours)
     pharmacy.update_delivery_terms(params.delivery_terms)
     pharmacy.update_preparation_tags(params.preparation_tags)
+    pharmacy.update_mail_preferences(params.mail_preferences)
 
     account.update_legal_info(
         params.legal_name,

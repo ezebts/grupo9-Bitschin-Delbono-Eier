@@ -29,7 +29,6 @@ def client_profile_params():
         mail_preferences=MailPreferences(
             on_reply=True,
             on_status_change=False,
-            on_quote_expiry=False,
         ),
     )
 

@@ -12,7 +12,6 @@ from shared.values import Location, PhoneNumber
 class MailPreferences:
     on_reply: bool
     on_status_change: bool
-    on_quote_expiry: bool
 
 
 class SearchRadius(int, Enum):
@@ -27,7 +26,6 @@ def default_mail_preferences():
         MailPreferences(
             on_reply=True,
             on_status_change=True,
-            on_quote_expiry=True,
         ),
     )
 

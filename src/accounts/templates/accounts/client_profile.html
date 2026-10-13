@@ -62,7 +62,6 @@
                         <h2 class="text-2xl font-semibold">Avisos por mail</h2>
                         {% include "accounts/_checkbox.html" with field=form.mail_on_reply %}
                         {% include "accounts/_checkbox.html" with field=form.mail_on_status_change %}
-                        {% include "accounts/_checkbox.html" with field=form.mail_on_quote_expiry %}
                     </section>
                     <div class="flex justify-end gap-3">
                         <a href="{% url 'profile' %}" class="btn btn-lg bg-base-100 border border-base-300">Descartar</a>
