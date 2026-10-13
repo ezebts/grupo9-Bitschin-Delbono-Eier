@@ -1,0 +1,28 @@
+<div class="flex flex-wrap items-center gap-2" x-data="{ custom: {% if widget.choice == 'other' %}true{% else %}false{% endif %} }">
+    <select id="{{ widget.attrs.id }}"
+            class="select {{ widget.select_class }}"
+            x-on:change="custom = $el.value === 'other'; if (custom) { $event.stopPropagation(); $nextTick(() => $refs.km.focus()) } else $refs.km.value = $el.value">
+        {% if widget.allow_empty %}
+            <option value="" {% if not widget.choice %}selected{% endif %}>Sin preferencia</option>
+        {% endif %}
+        {% for km in widget.presets %}
+            <option value="{{ km }}" {% if km == widget.choice %}selected{% endif %}>Hasta {{ km }} km</option>
+        {% endfor %}
+        <option value="other" {% if widget.choice == 'other' %}selected{% endif %}>Otra distancia…</option>
+    </select>
+    <label class="input validator w-36 {{ widget.input_class }}" x-bind:hidden="!custom" {% if widget.choice != 'other' %}hidden{% endif %}>
+        <input type="number"
+               name="{{ widget.name }}"
+               value="{{ widget.value|default:'' }}"
+               min="{{ widget.min_km }}"
+               max="{{ widget.max_km }}"
+               step="1"
+               inputmode="numeric"
+               aria-label="Distancia en kilómetros"
+               class="grow"
+               x-ref="km"
+               x-on:keydown.enter.prevent="$el.blur()"
+               data-search-radius>
+        <span class="text-base-content/60">km</span>
+    </label>
+</div>

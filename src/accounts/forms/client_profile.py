@@ -1,6 +1,7 @@
 from django import forms
 
 from accounts.commands.update_client_profile import UpdateClientProfileParams
+from accounts.forms.search_radius import SearchRadiusInput
 from accounts.models import MailPreferences, SearchRadius
 from accounts.queries.client_profile import ClientAccountProfile
 from shared.forms import TypedForm
@@ -41,15 +42,10 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
 
     longitude = forms.FloatField(widget=forms.HiddenInput, required=False)
 
-    search_radius = forms.TypedChoiceField(
+    search_radius = forms.IntegerField(
         label='Radio de búsqueda de farmacias por defecto',
-        coerce=int,
         required=False,
-        choices=[
-            ('', ''),
-            *[(radius.value, f'Hasta {radius.value} km') for radius in SearchRadius],
-        ],
-        widget=forms.Select(attrs={'x-ref': 'radius'}),
+        widget=SearchRadiusInput(allow_empty=True),
     )
 
     mail_on_reply = forms.BooleanField(
@@ -78,9 +74,9 @@ class ClientProfileForm(TypedForm[UpdateClientProfileParams]):
 
     def clean_search_radius(self):
         radius = self.cleaned_data['search_radius']
-        if not radius:
+        if radius is None:
             return None
-        return SearchRadius(radius)
+        return SearchRadius.create(radius)
 
     def clean_health_insurance_number(self):
         return self.cleaned_data['health_insurance_number'].strip()

@@ -1,7 +1,8 @@
-from django.http import Http404
+from django.contrib import messages
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView, TemplateView, View
 
 from chats.commands.send_message import send_message
 from chats.forms import ChatQuoteForm, CustomerMessageForm, MessageForm
@@ -11,9 +12,11 @@ from chats.queries.customer_inbox import (
     get_customer_inbox,
 )
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
+from orders.commands.accept_quote import accept_quote
+from orders.commands.reject_quote import reject_quote
 from orders.commands.submit_quote import submit_quote
 from orders.commands.withdraw_quote import withdraw_quote
-from orders.models import Order, QuoteRequestStatus
+from orders.models import Order, QuoteRequest, QuoteRequestStatus
 from shared.exceptions import Error
 from shared.views import RoleRequiredMixin
 
@@ -309,3 +312,45 @@ class CustomerReplyView(CustomerInboxMixin, FormView):
         return self.render_to_response(
             self.get_context_data(form=CustomerMessageForm())
         )
+
+
+class CustomerQuoteAnswerView(RoleRequiredMixin, View):
+    http_method_names = ('post',)
+
+    def allows(self, user):
+        return user.is_customer
+
+    def answer(self, conversation_id):
+        raise NotImplementedError
+
+    def post(self, request, conversation_id):
+        order_id = request.GET.get('order_id', '')
+        if not order_id.isdigit():
+            raise Http404
+
+        try:
+            self.answer(conversation_id)
+        except QuoteRequest.DoesNotExist:
+            raise Http404 from None
+        except Error as error:
+            messages.error(request, error.message)
+
+        url = (
+            f'{reverse("chats:customer_inbox")}'
+            f'?order_id={order_id}&conversation_id={conversation_id}'
+        )
+
+        if request.htmx:
+            return HttpResponse(headers={'HX-Redirect': url})
+
+        return redirect(url)
+
+
+class AcceptQuoteView(CustomerQuoteAnswerView):
+    def answer(self, conversation_id):
+        accept_quote(self.request.user.id, conversation_id)
+
+
+class RejectQuoteView(CustomerQuoteAnswerView):
+    def answer(self, conversation_id):
+        reject_quote(self.request.user.id, conversation_id)

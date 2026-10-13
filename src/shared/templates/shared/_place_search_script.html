@@ -4,6 +4,8 @@
             let map
             let marker
             let circle
+            let radius
+            let typed = { number: '', road: null }
             return {
                 places: [],
                 active: -1,
@@ -17,7 +19,8 @@
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                     }).addTo(map)
                     map.on('click', ({ latlng }) => this.pin(latlng.lat, latlng.lng))
-                    this.$refs.radius?.addEventListener('change', () => this.drawRadius())
+                    radius = this.$root.querySelector('[data-search-radius]')
+                    radius?.closest('[x-data]').addEventListener('change', () => this.drawRadius())
                     if (this.$refs.latitude.value) this.mark(this.$refs.latitude.value, this.$refs.longitude.value)
                 },
                 async request(path, params) {
@@ -55,8 +58,7 @@
                     this.drawRadius()
                 },
                 radiusKm() {
-                    const field = this.$refs.radius
-                    return field ? Number(field.value) : 0
+                    return radius ? Number(radius.value) : 0
                 },
                 drawRadius() {
                     const kilometers = this.radiusKm()
@@ -89,6 +91,7 @@
                 async search() {
                     const text = this.$refs.text.value.trim()
                     if (text.length < 3 || this.loading) return
+                    typed = { number: text.match(/(\d+)\s*(,|$)/)?.[1] || '', road: null }
                     const places = await this.request('search', { q: text, countrycodes: 'ar', limit: 5 })
                     if (!places) return
                     this.places = places
@@ -108,18 +111,22 @@
                     this.active = -1
                 },
                 choose(place) {
-                    const { label, name, street, housenumber, district, city, postcode, latitude, longitude } = place
+                    const { label, name, street, district, city, postcode, latitude, longitude } = place
                     const road = street || name || ''
-                    const address = [road, housenumber].filter(Boolean).join(' ')
+                    typed.road ??= road
+                    const number = typed.road === road && !road.includes(typed.number) ? typed.number : ''
+                    const address = [road, number || place.housenumber].filter(Boolean).join(' ')
+                    const locality = city || district
                     const postal = /^[A-Za-z]\d{4}$/.test(postcode || '') ? postcode.slice(1) : (postcode || '')
                     this.fill({
                         latitude,
                         longitude,
                         address,
-                        locality: city || district,
+                        locality,
                         postal_code: postal,
                     })
-                    this.$refs.text.value = this.$refs.address ? label : (address || this.$refs.text.value)
+                    const text = number ? `${address}, ${locality}` : label
+                    this.$refs.text.value = this.$refs.address ? text : (address || this.$refs.text.value)
                     this.mark(latitude, longitude)
                     this.close()
                 },

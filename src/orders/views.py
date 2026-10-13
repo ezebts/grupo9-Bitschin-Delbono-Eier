@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import FormView, TemplateView, View
 
+from accounts.exceptions import InvalidSearchRadiusError
+from accounts.forms.search_radius import SearchRadiusInput
 from accounts.models import PreparationTag, SearchRadius
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.find_nearby_pharmacies import find_nearby_pharmacies
@@ -196,7 +198,7 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
 
     def get_search_params(self, query):
         kinds = query.getlist('kinds')
-        default_search_radius = SearchRadius.KM5.value
+        default_search_radius = SearchRadius.default_km
 
         if 'radius' not in query:
             customer_profile = get_account_client_profile(self.request.user.id)
@@ -209,8 +211,13 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
                 'preparation': False,
             }
 
+        try:
+            radius_km = SearchRadius.create(query['radius']).km
+        except InvalidSearchRadiusError:
+            radius_km = default_search_radius
+
         return {
-            'radius_km': int(query.get('radius', default_search_radius)),
+            'radius_km': radius_km,
             'include_pharmacies': 'pharmacy' in kinds,
             'include_labs': 'lab' in kinds,
             'open_now': 'open' in query,
@@ -240,15 +247,15 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
 
         chosen = set(self.request.session.get(self.selected_pharmacies_session_key, []))
 
-        radius_options = [
-            {'value': radius.value, 'label': f'Hasta {radius.value} km'}
-            for radius in SearchRadius
-        ]
+        radius_input = SearchRadiusInput(
+            select_class='rounded-full h-11 min-h-11 w-auto! font-semibold text-[15px]',
+            input_class='rounded-full h-11 min-h-11 text-[15px]',
+        ).render('radius', options['radius_km'], attrs={'id': 'search-radius'})
 
         context.update(
             order=order,
             options=options,
-            radius_options=radius_options,
+            radius_input=radius_input,
             pharmacies=pharmacies,
             chosen=chosen,
             markers=[

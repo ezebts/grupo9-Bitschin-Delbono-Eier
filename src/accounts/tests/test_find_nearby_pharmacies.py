@@ -60,7 +60,7 @@ def test_nearby_pharmacies_keep_only_places_inside_the_radius():
 
     found = find_nearby_pharmacies(
         ORIGIN,
-        radius_km=SearchRadius.KM3,
+        radius_km=SearchRadius.create(3),
         include_pharmacies=True,
         include_labs=True,
         open_now=False,
@@ -88,7 +88,7 @@ def test_nearby_pharmacies_can_keep_labs_that_deliver_the_preparation():
 
     found = find_nearby_pharmacies(
         ORIGIN,
-        radius_km=SearchRadius.KM3,
+        radius_km=SearchRadius.create(3),
         include_pharmacies=False,
         include_labs=True,
         open_now=False,
@@ -137,7 +137,7 @@ def test_open_now_keeps_only_pharmacies_open_today():
 
     found = find_nearby_pharmacies(
         ORIGIN,
-        radius_km=SearchRadius.KM3,
+        radius_km=SearchRadius.create(3),
         include_pharmacies=True,
         include_labs=False,
         open_now=True,
@@ -167,7 +167,7 @@ def test_opening_hours_are_not_required_to_build_the_list():
 
     found = find_nearby_pharmacies(
         ORIGIN,
-        radius_km=SearchRadius.KM3,
+        radius_km=SearchRadius.create(3),
         include_pharmacies=True,
         include_labs=False,
         open_now=False,

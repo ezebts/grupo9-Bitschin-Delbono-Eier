@@ -142,11 +142,11 @@ classDiagram
         GLUTEN_FREE = "gluten_free"
     }
     class SearchRadius {
-        <<enum>>
-        KM1 = 1
-        KM3 = 3
-        KM5 = 5
-        KM10 = 10
+        <<value>>
+        km: int
+        minKm = 1
+        maxKm = 300
+        +create(km)$
     }
     class InvitationLink {
         <<value>>

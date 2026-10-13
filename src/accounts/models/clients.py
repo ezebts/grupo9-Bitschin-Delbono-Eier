@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum
 
 from django.db import models
 
+from accounts.exceptions import InvalidSearchRadiusError
 from accounts.models.base import User
 from shared.dataclasses import asdict, from_dict
 from shared.values import Location, PhoneNumber
@@ -14,11 +14,28 @@ class MailPreferences:
     on_status_change: bool
 
 
-class SearchRadius(int, Enum):
-    KM1 = 1
-    KM3 = 3
-    KM5 = 5
-    KM10 = 10
+@dataclass(frozen=True)
+class SearchRadius:
+    km: int
+    presets = (1, 3, 5, 10)
+    default_km = 5
+    min_km = 1
+    max_km = 300
+
+    @classmethod
+    def create(cls, km):
+        if isinstance(km, bool):
+            raise InvalidSearchRadiusError
+
+        try:
+            km = int(km)
+        except (TypeError, ValueError):
+            raise InvalidSearchRadiusError from None
+
+        if not cls.min_km <= km <= cls.max_km:
+            raise InvalidSearchRadiusError
+
+        return cls(km)
 
 
 def default_mail_preferences():
@@ -74,7 +91,7 @@ class ClientAccount(models.Model):
 
     def update_search_preferences(self, location, search_radius):
         self._location = asdict(location) if location else {}
-        self.search_radius = search_radius
+        self.search_radius = search_radius.km if search_radius else None
 
     def update_mail_preferences(self, mail_preferences):
         self._mail_preferences = asdict(mail_preferences)
