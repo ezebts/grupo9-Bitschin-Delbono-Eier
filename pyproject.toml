@@ -6,6 +6,7 @@ dependencies = [
     "dacite>=1.9.2",
     "django>=6.1.1",
     "django-allauth[socialaccount]>=65.19.7",
+    "django-anymail[resend]>=15.2",
     "django-cotton>=2.7.2",
     "django-htmx>=1.29.0",
     "django-tailwind-cli>=4.8.1",

@@ -16,7 +16,10 @@ from decouple import Csv, config
 
 SECRET_KEY = config('SECRET_KEY')
 
+HOST = config('HOSTNAME')
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS.append(HOST)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
