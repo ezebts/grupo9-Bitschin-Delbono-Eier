@@ -1,6 +1,7 @@
 from django import forms
 from django.core.validators import DecimalValidator
 
+from orders.commands.advance_order import AdvanceOrderParams
 from orders.commands.submit_quote import SubmitQuoteParams
 from orders.models import DeliveryPreference
 from shared.forms import TypedForm
@@ -194,3 +195,16 @@ class ChatQuoteForm(TypedForm[SubmitQuoteParams]):
             ),
             valid_until=data['valid_until'],
         )
+
+
+class OrderStatusForm(TypedForm[AdvanceOrderParams]):
+    estimated_at = forms.DateField(
+        label='Fecha estimada',
+        required=False,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+    )
+
+    @property
+    def cleaned_params(self) -> AdvanceOrderParams:
+        return AdvanceOrderParams(estimated_at=self.cleaned_data['estimated_at'])

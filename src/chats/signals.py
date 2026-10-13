@@ -15,7 +15,12 @@ from chats.commands.send_quote_request_mail import send_quote_request_mail
 from chats.commands.send_system_message import send_system_message
 from chats.commands.start_conversation import start_conversation
 from chats.models import Message, UserMessage
-from orders.models import QuoteRequest, QuoteRequestStatus
+from orders.models import (
+    FulfillmentStatus,
+    QuoteRequest,
+    QuoteRequestStatus,
+    StatusEvent,
+)
 
 
 @receiver(post_save, sender=QuoteRequest)
@@ -77,10 +82,6 @@ def email_quote_update(sender, instance, created, **kwargs):  # noqa: ARG001
         transaction.on_commit(
             partial(send_pharmacy_reply_notice, conversation_id, decision=True),
         )
-        if not _another_quote_accepted(instance):
-            transaction.on_commit(
-                partial(send_order_status_notice, conversation_id, 'en preparación'),
-            )
         return
 
     if status == QuoteRequestStatus.REJECTED:
@@ -92,17 +93,23 @@ def email_quote_update(sender, instance, created, **kwargs):  # noqa: ARG001
         )
 
 
+@receiver(post_save, sender=StatusEvent)
+def email_order_status(sender, instance, created, **kwargs):  # noqa: ARG001
+    if not created or instance.status == FulfillmentStatus.ACCEPTED:
+        return
+
+    order = instance.order
+    conversation_id = order.quote_requests.get(
+        status=QuoteRequestStatus.ACCEPTED,
+    ).conversation.pk
+    status_label = order.fulfillment_label(instance.status).lower()
+
+    transaction.on_commit(
+        partial(send_order_status_notice, conversation_id, status_label),
+    )
+
+
 def _quote_was_sent(update_fields):
     if update_fields is None:
         return True
     return bool({'status', 'quoted_at'} & set(update_fields))
-
-
-def _another_quote_accepted(quote_request):
-    return (
-        quote_request.order.quote_requests.filter(
-            status=QuoteRequestStatus.ACCEPTED,
-        )
-        .exclude(pk=quote_request.pk)
-        .exists()
-    )

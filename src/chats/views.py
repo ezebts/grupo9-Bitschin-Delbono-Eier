@@ -5,7 +5,12 @@ from django.urls import reverse
 from django.views.generic import FormView, TemplateView, View
 
 from chats.commands.send_message import send_message
-from chats.forms import ChatQuoteForm, CustomerMessageForm, MessageForm
+from chats.forms import (
+    ChatQuoteForm,
+    CustomerMessageForm,
+    MessageForm,
+    OrderStatusForm,
+)
 from chats.models import Conversation
 from chats.queries.customer_inbox import (
     get_customer_conversation,
@@ -13,6 +18,7 @@ from chats.queries.customer_inbox import (
 )
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
 from orders.commands.accept_quote import accept_quote
+from orders.commands.advance_order import advance_order
 from orders.commands.reject_quote import reject_quote
 from orders.commands.submit_quote import submit_quote
 from orders.commands.withdraw_quote import withdraw_quote
@@ -87,8 +93,6 @@ class PharmacyInboxMixin(RoleRequiredMixin):
 
         if conversation_id:
             selected = self.get_selected_conversation(conversation_id)
-        elif inbox.conversations:
-            selected = get_conversation(user_id, inbox.conversations[0].id)
         else:
             selected = None
 
@@ -107,6 +111,10 @@ class PharmacyInboxMixin(RoleRequiredMixin):
         if not isinstance(message_form, MessageForm):
             message_form = MessageForm()
 
+        order_form = context.get('order_form')
+        if order_form is None:
+            order_form = OrderStatusForm()
+
         context.update(
             conversations=inbox.conversations,
             selected=selected,
@@ -116,6 +124,7 @@ class PharmacyInboxMixin(RoleRequiredMixin):
             form=message_form,
             quote_form=quote_form,
             quote_error=context.get('quote_error', ''),
+            order_form=order_form,
             waiting_count=inbox.waiting_count,
             quoted_count=inbox.quoted_count,
             accepted_count=inbox.accepted_count,
@@ -188,6 +197,35 @@ class ChatSaveQuoteView(PharmacyInboxMixin, FormView):
                 self.kwargs['conversation_id'],
                 form.cleaned_params,
             )
+        except Error as error:
+            form.add_error(None, error)
+            return self.form_invalid(form)
+
+        return self.render_inbox_after_quote_action()
+
+
+class AdvanceOrderView(PharmacyInboxMixin, FormView):
+    form_class = OrderStatusForm
+    http_method_names = ('post',)
+
+    def get_context_data(self, **kwargs):
+        order_form = kwargs.pop('form', None)
+        context = super().get_context_data(**kwargs)
+        if order_form is not None:
+            context['order_form'] = order_form
+        return context
+
+    def form_valid(self, form):
+        self.get_selected_conversation(self.kwargs['conversation_id'])
+
+        try:
+            advance_order(
+                self.request.user.id,
+                self.kwargs['conversation_id'],
+                form.cleaned_params,
+            )
+        except QuoteRequest.DoesNotExist:
+            raise Http404 from None
         except Error as error:
             form.add_error(None, error)
             return self.form_invalid(form)

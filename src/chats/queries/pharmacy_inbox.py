@@ -11,10 +11,17 @@ from accounts.models import Pharmacy, PreparationTag
 from accounts.models.pharmacies import GEO_WGS84_LAT_LONG
 from chats.models import Conversation, Message
 from chats.queries.customer_inbox import (
+    PREPARATION_SYSTEM_MESSAGE,
     QUOTE_CARD_SYSTEM_MESSAGES,
     WITHDRAWN_QUOTE_SYSTEM_MESSAGE,
 )
-from orders.models import DeliveryPreference, QuoteRequestStatus, Urgency
+from orders.models import (
+    DeliveryPreference,
+    FulfillmentStatus,
+    QuoteRequestStatus,
+    StatusEvent,
+    Urgency,
+)
 from shared.files import file_size_label
 
 
@@ -27,6 +34,16 @@ class ChatMessage:
     is_system: bool
     follow_with_quote_card: bool = False
     follow_with_withdrawn_notice: bool = False
+    estimated_at: date | None = None
+
+
+@dataclass(frozen=True)
+class FulfillmentStep:
+    label: str
+    reached_at: datetime | None
+    estimated_at: date | None
+    done: bool
+    current: bool
 
 
 @dataclass(frozen=True)
@@ -35,6 +52,7 @@ class ListedConversation:
     title: str
     customer_name: str
     quote_status: str
+    fulfillment_label: str
     waiting_for_pharmacy: bool
     updated_at: datetime
     last_message: ChatMessage | None
@@ -72,6 +90,10 @@ class OpenConversation:
     prescription_url: str
     quote_card_at_end: bool
     messages: tuple[ChatMessage, ...]
+    fulfillment_label: str
+    fulfillment_steps: tuple[FulfillmentStep, ...]
+    next_fulfillment_label: str
+    asks_estimated_date: bool
 
 
 @dataclass(frozen=True)
@@ -109,7 +131,7 @@ def _customer_zone_label(order, pharmacy) -> str:
         return locality
 
     km_label = f'{distance.km:.1f}'.replace('.', ',')
-    return f'{locality} · {km_label} km'
+    return f'{locality} · aprox. {km_label} km en línea recta'
 
 
 def get_pharmacy_inbox(
@@ -128,6 +150,14 @@ def get_pharmacy_inbox(
         found = found.search(search)
 
     found = found.filter(quote_request__status=quote_filter)
+
+    latest_status = StatusEvent.objects.filter(
+        order=OuterRef('quote_request__order'),
+    ).order_by('-created_at', '-pk')
+
+    found = found.annotate(
+        fulfillment_status=Subquery(latest_status.values('status')[:1]),
+    )
 
     conversation_ids = found.values('pk')
 
@@ -157,7 +187,8 @@ def get_pharmacy_inbox(
                 is_system=last.is_system,
             )
 
-        user = conversation.quote_request.order.client_account.user
+        order = conversation.quote_request.order
+        user = order.client_account.user
         customer_name = f'{user.first_name} {user.last_name}'.strip()
 
         listed.append(
@@ -166,6 +197,12 @@ def get_pharmacy_inbox(
                 title=conversation.title,
                 customer_name=customer_name,
                 quote_status=conversation.quote_request.status,
+                fulfillment_label=(
+                    order.fulfillment_label(conversation.fulfillment_status)
+                    if conversation.quote_request.status == QuoteRequestStatus.ACCEPTED
+                    and conversation.fulfillment_status
+                    else ''
+                ),
                 waiting_for_pharmacy=(last is None or last.is_customer),
                 updated_at=conversation.updated_at,
                 last_message=last_message,
@@ -200,6 +237,7 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
             'quote_request__order__client_account',
             'quote_request__pharmacy',
         )
+        .prefetch_related('quote_request__order__status_events')
         .annotate(
             customer_first_name=F(f'{customer}__first_name'),
             customer_last_name=F(f'{customer}__last_name'),
@@ -208,6 +246,9 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
     )
 
     quote_request = conversation.quote_request
+    preparation = quote_request.order.status_events.filter(
+        status=FulfillmentStatus.IN_PREPARATION,
+    ).first()
 
     messages = []
     quote_card_after = None
@@ -220,6 +261,11 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
                 is_customer=message.is_customer,
                 is_pharmacy=message.is_pharmacy,
                 is_system=message.is_system,
+                estimated_at=(
+                    preparation.estimated_at
+                    if preparation and message.body == PREPARATION_SYSTEM_MESSAGE
+                    else None
+                ),
             ),
         )
         if message.body in QUOTE_CARD_SYSTEM_MESSAGES:
@@ -265,6 +311,8 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
     ).strip()
     order = quote_request.order
     pharmacy = quote_request.pharmacy
+    accepted = quote_request.status == QuoteRequestStatus.ACCEPTED
+    next_status = order.next_fulfillment_status if accepted else None
 
     return OpenConversation(
         id=conversation.pk,
@@ -314,4 +362,30 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
         prescription_url=order.prescription.url if order.prescription else '',
         quote_card_at_end=quote_card_at_end,
         messages=tuple(messages),
+        fulfillment_label=(
+            order.fulfillment_label(order.fulfillment_status) if accepted else ''
+        ),
+        fulfillment_steps=_fulfillment_steps(order) if accepted else (),
+        next_fulfillment_label=(
+            order.fulfillment_label(next_status) if accepted and next_status else ''
+        ),
+        asks_estimated_date=next_status == FulfillmentStatus.IN_PREPARATION,
+    )
+
+
+def _fulfillment_steps(order) -> tuple[FulfillmentStep, ...]:
+    events = {event.status: event for event in order.status_events.all()}
+    statuses = list(FulfillmentStatus)
+    current = order.fulfillment_status
+    current_index = statuses.index(current) if current else -1
+
+    return tuple(
+        FulfillmentStep(
+            label=order.fulfillment_label(status),
+            reached_at=events[status].created_at if status in events else None,
+            estimated_at=events[status].estimated_at if status in events else None,
+            done=index < current_index,
+            current=index == current_index,
+        )
+        for index, status in enumerate(statuses)
     )

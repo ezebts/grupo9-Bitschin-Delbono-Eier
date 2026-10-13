@@ -2,21 +2,21 @@
 <div id="inbox-content" class="contents">
 {% timezone request.user.timezone %}
     <nav aria-label="Filtrar conversaciones" class="grid gap-2 sm:grid-cols-3">
-        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'waiting' %}border-2 border-[#1E4FC2] bg-[#E7EEFD]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=waiting{% if search %}&amp;search={{ search|urlencode }}{% endif %}{% if selected %}&amp;conversation_id={{ selected.id }}{% endif %}" {% if filter == 'waiting' %}aria-current="page"{% endif %}>
+        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'waiting' %}border-2 border-[#1E4FC2] bg-[#E7EEFD]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=waiting{% if search %}&amp;search={{ search|urlencode }}{% endif %}" {% if filter == 'waiting' %}aria-current="page"{% endif %}>
             <span class="flex flex-col gap-0.5">
                 <span class="font-bold">Pendientes de presupuesto</span>
                 <span class="text-[13px] text-[#51605A]">Solicitudes sin responder</span>
             </span>
             <span class="min-w-8 h-8 px-2 rounded-full bg-[#FCEFD9] text-[#8A4B00] inline-flex items-center justify-center font-bold">{{ waiting_count }}</span>
         </a>
-        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'quoted' %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=quoted{% if search %}&amp;search={{ search|urlencode }}{% endif %}{% if selected %}&amp;conversation_id={{ selected.id }}{% endif %}" {% if filter == 'quoted' %}aria-current="page"{% endif %}>
+        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'quoted' %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=quoted{% if search %}&amp;search={{ search|urlencode }}{% endif %}" {% if filter == 'quoted' %}aria-current="page"{% endif %}>
             <span class="flex flex-col gap-0.5">
                 <span class="font-bold">Presupuesto enviado</span>
                 <span class="text-[13px] text-[#51605A]">Esperando respuesta del cliente</span>
             </span>
             <span class="min-w-8 h-8 px-2 rounded-full bg-[#E2F0EA] text-[#0A5141] inline-flex items-center justify-center font-bold">{{ quoted_count }}</span>
         </a>
-        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'accepted' %}border-2 border-[#12201B] bg-[#E2F0EA]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=accepted{% if search %}&amp;search={{ search|urlencode }}{% endif %}{% if selected %}&amp;conversation_id={{ selected.id }}{% endif %}" {% if filter == 'accepted' %}aria-current="page"{% endif %}>
+        <a class="flex items-center justify-between gap-3 min-h-16 px-4 py-3 rounded-xl no-underline {% if filter == 'accepted' %}border-2 border-[#12201B] bg-[#E2F0EA]{% else %}border border-base-300 bg-base-100{% endif %}" href="{% url 'chats:inbox' %}?filter=accepted{% if search %}&amp;search={{ search|urlencode }}{% endif %}" {% if filter == 'accepted' %}aria-current="page"{% endif %}>
             <span class="flex flex-col gap-0.5">
                 <span class="font-bold">Aceptados por el cliente</span>
                 <span class="text-[13px] text-[#51605A]">Pedidos para preparar y entregar</span>
@@ -40,11 +40,14 @@
                         <time class="text-[13px] text-[#51605A]">{{ conversation.updated_at|date:"d/m H:i" }}</time>
                     </span>
                     <span class="text-sm text-[#3F4B47]">{{ conversation.title }}</span>
-                    <span class="text-sm text-[#51605A]">{% if conversation.last_message %}«{{ conversation.last_message.body|truncatechars:40 }}»{% else %}Sin mensajes{% endif %}</span>
+                    <span class="text-sm text-[#51605A]">{% if conversation.last_message %}«{{ conversation.last_message.body|truncatechars:60 }}»{% else %}Sin mensajes{% endif %}</span>
                     {% if conversation.waiting_for_pharmacy %}
                         <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#FCEFD9] text-[#8A4B00]">Nuevo mensaje</span>
                     {% elif conversation.quote_status == 'waiting' %}
                         <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#E7EEFD] text-[#1E4FC2]">Pendiente de presupuesto</span>
+                    {% endif %}
+                    {% if conversation.fulfillment_label %}
+                        <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#E2F0EA] text-[#0A5141]">{{ conversation.fulfillment_label }}</span>
                     {% endif %}
                 </a>
             {% empty %}
@@ -52,7 +55,7 @@
             {% endfor %}
         </section>
 
-        <section class="flex-[3_1_36rem] min-w-0 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 bg-base-100 border border-base-300 rounded-2xl flex flex-col overflow-hidden" aria-label="Conversación">
+        <section class="flex-[3_1_36rem] min-w-0 h-[calc(100dvh-16rem)] max-h-[42rem] min-h-80 bg-base-100 border border-base-300 rounded-2xl flex flex-col overflow-hidden" aria-label="Conversación">
             {% if selected %}
                 <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-5 py-4 border-b border-base-300">
                     <span class="flex flex-col gap-1">
@@ -66,7 +69,7 @@
                         {% elif selected.quote_status == 'quoted' %}
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-[#E7EEFD] text-[#1E4FC2]">Esperando que {{ selected.customer_name|truncatewords:1 }} lo acepte</span>
                         {% elif selected.quote_status == 'accepted' %}
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-[#E2F0EA] text-[#0A5141]">Aceptado</span>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-[#E2F0EA] text-[#0A5141]">{{ selected.fulfillment_label|default:"Aceptado" }}</span>
                         {% endif %}
                         {% if selected.waiting_for_pharmacy %}
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-bold bg-[#FCEFD9] text-[#8A4B00]">Nuevo mensaje</span>
@@ -77,7 +80,7 @@
                     {% include 'chats/_pharmacy_quote_request_message.html' %}
                     {% for message in selected.messages %}
                         {% if message.is_system %}
-                            <p class="self-center inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECEFED] text-[13px] text-[#3F4B47]">{{ message.body }} · <time>{{ message.created_at|date:"d/m H:i" }}</time></p>
+                            {% include 'chats/_system_message.html' %}
                         {% else %}
                             <div class="flex flex-col gap-1 {% if message.is_pharmacy %}items-end{% else %}items-start{% endif %}">
                                 <span class="text-xs text-[#51605A]">{% if message.is_pharmacy %}Vos{% else %}{{ selected.customer_name }}{% endif %} · <time>{{ message.created_at|date:"d/m H:i" }}</time></span>
@@ -107,13 +110,15 @@
                 </form>
             {% else %}
                 <div class="flex-1 grid place-items-center p-8 text-center">
-                    <p class="text-sm text-[#51605A]">Cuando un cliente escriba por un pedido, la conversación va a aparecer acá.</p>
+                    <p class="text-sm text-[#51605A]">{% if conversations %}Elegí una conversación de la lista para verla acá.{% else %}Cuando un cliente escriba por un pedido, la conversación va a aparecer acá.{% endif %}</p>
                 </div>
             {% endif %}
         </section>
 
         <aside class="flex w-full flex-[1.3_1_20rem] flex-col gap-4">
-            {% if selected and selected.quote_status == 'waiting' %}
+            {% if selected.fulfillment_steps %}
+                {% include 'chats/_pharmacy_order_status.html' %}
+            {% elif selected and selected.quote_status == 'waiting' %}
                 <section aria-labelledby="presupuesto-titulo" class="flex flex-col gap-4 rounded-[18px] border border-[#DCE2DE] bg-base-100 p-[22px]">
                     <div class="flex flex-col gap-1">
                         <h2 id="presupuesto-titulo" class="text-[22px] font-bold tracking-tight">Enviar presupuesto</h2>

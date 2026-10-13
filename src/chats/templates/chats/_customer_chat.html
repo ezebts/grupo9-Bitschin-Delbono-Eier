@@ -19,7 +19,7 @@
                 {% endif %}
                 <span class="text-[13px] text-[#51605A]">
                     <time>{{ conversation.updated_at|date:"d/m H:i" }}</time>
-                    {% if conversation.last_message %}· «{{ conversation.last_message.body|truncatechars:40 }}»{% endif %}
+                    {% if conversation.last_message %}· «{{ conversation.last_message.body|truncatechars:60 }}»{% endif %}
                 </span>
             </a>
         {% empty %}
@@ -42,7 +42,7 @@
                 {% include 'chats/_customer_quote_request_message.html' %}
                 {% for message in selected.messages %}
                     {% if message.is_system %}
-                        <p class="self-center inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECEFED] text-[13px] text-[#3F4B47]">{{ message.body }} · <time>{{ message.created_at|date:"d/m H:i" }}</time></p>
+                        {% include 'chats/_system_message.html' %}
                     {% else %}
                         <div class="flex flex-col gap-1 {% if message.is_customer %}items-end{% else %}items-start{% endif %}">
                             <span class="text-xs text-[#51605A]">{% if message.is_customer %}Vos{% else %}{{ selected.pharmacy_name }}{% endif %} · <time>{{ message.created_at|date:"d/m H:i" }}</time></span>

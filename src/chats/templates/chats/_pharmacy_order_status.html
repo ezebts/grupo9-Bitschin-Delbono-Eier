@@ -1,0 +1,51 @@
+{% load widget_tweaks %}
+<section aria-labelledby="estado-titulo" class="flex flex-col gap-4 rounded-[18px] border border-[#DCE2DE] bg-base-100 p-[22px]">
+    <h2 id="estado-titulo" class="text-[22px] font-bold tracking-tight">Estado del pedido</h2>
+    <ol class="flex flex-col list-none p-0 m-0">
+        {% for step in selected.fulfillment_steps %}
+            <li class="flex gap-3" {% if step.current %}aria-current="step"{% endif %}>
+                <span class="flex flex-col items-center">
+                    <span class="w-7 h-7 shrink-0 rounded-full border-[1.5px] inline-flex items-center justify-center text-[13px] font-bold {% if step.done %}bg-[#0E6B55] border-[#0E6B55] text-white{% elif step.current %}bg-base-100 border-[#0E6B55] text-[#0A5141]{% else %}bg-base-100 border-[#C9D2CD] text-[#51605A]{% endif %}">
+                        {% if step.done %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+                        {% else %}
+                            {{ forloop.counter }}
+                        {% endif %}
+                    </span>
+                    {% if not forloop.last %}
+                        <span class="w-0.5 flex-1 min-h-4 {% if step.done %}bg-[#0E6B55]{% else %}bg-[#DCE2DE]{% endif %}" aria-hidden="true"></span>
+                    {% endif %}
+                </span>
+                <span class="flex flex-col gap-0.5 pb-3">
+                    <span class="{% if step.current %}font-bold text-[#0A5141]{% elif step.done %}font-semibold{% else %}font-medium text-[#51605A]{% endif %}">{{ step.label }}</span>
+                    <span class="text-[13px] text-[#51605A]">
+                        {% if step.reached_at %}
+                            {{ step.reached_at|date:"j b, H:i" }}{% if step.estimated_at %} · lista el {{ step.estimated_at|date:"j b" }}{% endif %}
+                        {% else %}
+                            Pendiente
+                        {% endif %}
+                    </span>
+                </span>
+            </li>
+        {% endfor %}
+    </ol>
+    {% if selected.next_fulfillment_label %}
+        <form method="post" action="{% url 'chats:advance_order' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-post="{% url 'chats:advance_order' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML" class="flex flex-col gap-3">
+            {% csrf_token %}
+            {% if selected.asks_estimated_date %}
+                <div class="min-w-0">
+                    <label class="mb-1.5 block text-sm font-semibold" for="{{ order_form.estimated_at.id_for_label }}">{{ order_form.estimated_at.label }}</label>
+                    {% render_field order_form.estimated_at class="input min-h-12 w-full text-[15px]" required="" %}
+                    {% for error in order_form.estimated_at.errors %}<span class="text-error text-sm font-normal">{{ error }}</span>{% endfor %}
+                </div>
+            {% endif %}
+            <button class="btn btn-primary min-h-[52px] w-full text-base" type="submit">Marcar como «{{ selected.next_fulfillment_label }}»</button>
+            <p class="text-[13px] text-[#51605A]">El cliente recibe un aviso por mail y lo ve en el chat.</p>
+            {% for error in order_form.non_field_errors %}
+                <p role="alert" class="text-error text-sm">{{ error }}</p>
+            {% endfor %}
+        </form>
+    {% else %}
+        <p class="rounded-xl bg-[#E2F0EA] p-3 text-sm font-semibold text-[#0A5141]">Pedido entregado.</p>
+    {% endif %}
+</section>

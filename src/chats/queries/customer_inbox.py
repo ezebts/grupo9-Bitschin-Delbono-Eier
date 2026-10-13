@@ -9,6 +9,7 @@ from accounts.models import PreparationTag, User
 from chats.models import Conversation, Message
 from orders.models import (
     DeliveryPreference,
+    FulfillmentStatus,
     Order,
     OrderProgress,
     QuoteRequestStatus,
@@ -22,6 +23,8 @@ QUOTE_CARD_SYSTEM_MESSAGES = (
 
 WITHDRAWN_QUOTE_SYSTEM_MESSAGE = 'La farmacia retiró el presupuesto.'
 
+PREPARATION_SYSTEM_MESSAGE = 'La farmacia marcó el pedido como «En preparación».'
+
 
 @dataclass(frozen=True)
 class ChatMessage:
@@ -32,6 +35,7 @@ class ChatMessage:
     is_system: bool
     follow_with_quote_card: bool = False
     follow_with_withdrawn_notice: bool = False
+    estimated_at: date | None = None
 
 
 @dataclass(frozen=True)
@@ -204,6 +208,9 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
 
     hours = pharmacy.opening_hours.format(moment) if pharmacy.opening_hours else ''
     quote_request = conversation.quote_request
+    preparation = quote_request.order.status_events.filter(
+        status=FulfillmentStatus.IN_PREPARATION,
+    ).first()
 
     messages = []
     quote_card_after = None
@@ -216,6 +223,11 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
                 is_customer=message.is_customer,
                 is_pharmacy=message.is_pharmacy,
                 is_system=message.is_system,
+                estimated_at=(
+                    preparation.estimated_at
+                    if preparation and message.body == PREPARATION_SYSTEM_MESSAGE
+                    else None
+                ),
             ),
         )
         if message.body in QUOTE_CARD_SYSTEM_MESSAGES:
