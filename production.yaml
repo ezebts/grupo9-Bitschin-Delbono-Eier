@@ -20,16 +20,13 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: HOSTNAME
-        fromService:
-          type: web
-          name: magistral
-          envVarKey: RENDER_EXTERNAL_HOSTNAME
+        value: recetasmagistral.com.ar
       - key: DATABASE_URL
         fromDatabase:
           name: magistral-db
           property: connectionString
       - key: DEFAULT_FROM_EMAIL
-        value: Magistral <notificaciones@localhost>
+        value: "Magistral <hola@notificaciones.recetasmagistral.com.ar>"
       - key: RESEND_API_KEY
         sync: false
       - key: GOOGLE_CLIENT_ID

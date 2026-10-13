@@ -6,7 +6,12 @@ from .base import *
 
 DEBUG = False
 
-CSRF_TRUSTED_ORIGINS = [f'https://{HOST}']
+ALLOWED_HOSTS.append('.recetasmagistral.com.ar')
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{HOST}',
+    'https://recetasmagistral.com.ar',
+    'https://www.recetasmagistral.com.ar',
+]
 CSRF_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
@@ -28,7 +33,7 @@ DATABASES = {
 
 DEFAULT_FROM_EMAIL = config(
     'DEFAULT_FROM_EMAIL',
-    default='Magistral <notificaciones@localhost>',
+    default='Magistral <hola@notificaciones.recetasmagistral.com.ar>',
 )
 
 INSTALLED_APPS = [*INSTALLED_APPS, 'anymail']
