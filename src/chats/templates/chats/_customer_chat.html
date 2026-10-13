@@ -8,8 +8,10 @@
                 <span class="font-bold text-[15px]">{{ conversation.pharmacy_name }}</span>
                 {% if conversation.quote_status == 'waiting' %}
                     <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#FCEFD9] text-[#8A4B00]">Sin respuesta todavía</span>
-                {% elif conversation.quote_status == 'withdrawn' %}
-                    <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ECEFED] text-[#3F4B47]">Presupuesto retirado</span>
+                {% elif conversation.quote_status == 'withdrawn' or conversation.quote_status == 'rejected' or conversation.quote_status == 'not_chosen' %}
+                    <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ECEFED] text-[#3F4B47]">{{ conversation.quote_status_label }}</span>
+                {% elif conversation.quote_status == 'accepted' %}
+                    <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#E2F0EA] text-[#0A5141]">{{ conversation.quote_status_label }} · {{ conversation.quote_currency }} {{ conversation.quote_price|floatformat:"2g" }}</span>
                 {% elif conversation.quote_price %}
                     <span class="text-sm text-[#3F4B47]">Presupuesto <strong class="text-base-content">{{ conversation.quote_currency }} {{ conversation.quote_price|floatformat:"2g" }}</strong>{% if conversation.preparation_time %} · {{ conversation.preparation_time }}{% endif %}</span>
                 {% else %}

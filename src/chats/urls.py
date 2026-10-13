@@ -13,6 +13,16 @@ urlpatterns = [
         name='customer_reply',
     ),
     path(
+        'my/<int:conversation_id>/quote/accept/',
+        views.AcceptQuoteView.as_view(),
+        name='accept_quote',
+    ),
+    path(
+        'my/<int:conversation_id>/quote/reject/',
+        views.RejectQuoteView.as_view(),
+        name='reject_quote',
+    ),
+    path(
         'conversations/<int:conversation_id>/messages/',
         views.SendMessageView.as_view(),
         name='send_message',

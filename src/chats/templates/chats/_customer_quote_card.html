@@ -22,6 +22,23 @@
                     Válido hasta el {{ selected.valid_until|date:"j \d\e F" }}
                 </li>
             </ul>
+            {% if selected.quote_status == 'quoted' %}
+                <div class="flex flex-wrap gap-2">
+                    <form method="post" action="{% url 'chats:accept_quote' selected.id %}?order_id={{ order_id }}" hx-post="{% url 'chats:accept_quote' selected.id %}?order_id={{ order_id }}" hx-confirm="¿Aceptar el presupuesto de {{ selected.pharmacy_name }}? Las demás farmacias van a quedar como no elegidas.">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary min-h-11 rounded-[10px] text-[15px]">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+                            Aceptar presupuesto
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'chats:reject_quote' selected.id %}?order_id={{ order_id }}" hx-post="{% url 'chats:reject_quote' selected.id %}?order_id={{ order_id }}" hx-confirm="¿Rechazar el presupuesto de {{ selected.pharmacy_name }}?">
+                        {% csrf_token %}
+                        <button type="submit" class="btn min-h-11 rounded-[10px] bg-base-100 border border-[#C9D2CD] text-[15px]">Rechazar</button>
+                    </form>
+                </div>
+            {% elif selected.quote_status == 'accepted' %}
+                <span class="self-start inline-flex items-center gap-1.5 rounded-full bg-[#E2F0EA] px-2.5 py-0.5 text-xs font-bold text-[#0A5141]">Aceptaste este presupuesto</span>
+            {% endif %}
         </div>
     </div>
 </div>

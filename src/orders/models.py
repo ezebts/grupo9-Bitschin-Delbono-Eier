@@ -3,6 +3,8 @@ from django.db.models import Case, CharField, Count, Exists, OuterRef, Q, Value,
 from django.utils import timezone
 
 from orders.exceptions import (
+    ExpiredQuoteError,
+    QuoteCannotBeAnsweredError,
     QuoteCannotBeEditedError,
     QuoteCannotBeSubmittedError,
     QuoteCannotBeWithdrawnError,
@@ -251,6 +253,24 @@ class QuoteRequest(models.Model):
             raise QuoteCannotBeWithdrawnError
 
         self.status = QuoteRequestStatus.WITHDRAWN
+
+    def accept_quote(self, today):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeAnsweredError
+
+        if self.valid_until < today:
+            raise ExpiredQuoteError
+
+        self.status = QuoteRequestStatus.ACCEPTED
+
+    def reject_quote(self):
+        if self.status != QuoteRequestStatus.QUOTED:
+            raise QuoteCannotBeAnsweredError
+
+        self.status = QuoteRequestStatus.REJECTED
+
+    def mark_not_chosen(self):
+        self.status = QuoteRequestStatus.NOT_CHOSEN
 
     @property
     def price(self) -> Money | None:

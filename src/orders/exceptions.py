@@ -19,6 +19,16 @@ class QuoteCannotBeWithdrawnError(Error):
 
 
 @dataclass(frozen=True)
+class QuoteCannotBeAnsweredError(Error):
+    message = 'Este presupuesto ya no se puede aceptar ni rechazar.'
+
+
+@dataclass(frozen=True)
+class ExpiredQuoteError(Error):
+    message = 'Este presupuesto ya venció.'
+
+
+@dataclass(frozen=True)
 class InvalidQuotePriceError(Error):
     message = 'Ingresá un monto mayor a cero.'
 
