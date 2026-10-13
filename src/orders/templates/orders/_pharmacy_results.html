@@ -7,7 +7,7 @@
             <button type="button" class="btn btn-ghost" x-on:click="selectNone()">Ninguna</button>
         </div>
     </div>
-    <div class="flex flex-col gap-2.5 max-h-[690px] overflow-y-auto">
+    <div class="flex flex-col gap-2.5 max-h-[calc(100dvh-26.5rem)] min-h-64 overflow-y-auto">
         {% for pharmacy in pharmacies %}
             <label class="flex gap-3.5 items-start p-4 rounded-2xl cursor-pointer border {% if pharmacy.id in chosen %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border-base-300 bg-base-100{% endif %}">
                 <input class="checkbox checkbox-primary mt-0.5" type="checkbox" name="pharmacy" value="{{ pharmacy.id }}" {% if pharmacy.id in chosen %}checked{% endif %} x-on:change="paint()">

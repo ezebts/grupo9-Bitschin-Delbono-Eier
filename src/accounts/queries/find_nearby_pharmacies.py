@@ -53,7 +53,7 @@ def find_nearby_pharmacies(  # noqa: PLR0913
     nearby_pharmacies = Pharmacy.objects.filter(
         visible=True,
         kind__in=kinds,
-    ).within(origin, radius_km.value)
+    ).within(origin, radius_km.km)
 
     if home_delivery:
         nearby_pharmacies = nearby_pharmacies.filter(

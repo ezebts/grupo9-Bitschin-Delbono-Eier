@@ -9,8 +9,8 @@
 {% endblock extra_head %}
 
 {% block content %}
-    <main class="min-h-screen bg-base-200">
-        <div class="max-w-7xl mx-auto px-6 py-8 pb-28 space-y-6">
+    <main>
+        <div class="max-w-7xl mx-auto px-6 py-8 pb-0 space-y-6">
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div class="space-y-1.5">
                     <h1 class="text-4xl font-bold tracking-tight">Elegí a quién pedir presupuesto</h1>
@@ -36,11 +36,7 @@
             <form method="get" action="{% url 'orders:choose' %}" hx-get="{% url 'orders:choose' %}" hx-target="#pharmacy-results" hx-swap="outerHTML" hx-trigger="change" hx-push-url="true" hx-sync="this:replace" class="flex flex-wrap gap-2 items-center" aria-label="Filtros de búsqueda">
                 <input class="input rounded-full h-11 min-h-11 min-w-0 max-w-72 flex-[1_1_11rem] text-[15px]" type="search" value="{{ order.search_area }}" aria-label="Zona de búsqueda" readonly>
                 <label class="sr-only" for="search-radius">Distancia máxima</label>
-                <select id="search-radius" name="radius" class="select rounded-full h-11 min-h-11 w-auto! shrink-0 font-semibold text-[15px]">
-                    {% for option in radius_options %}
-                        <option value="{{ option.value }}" {% if options.radius_km == option.value %}selected{% endif %}>{{ option.label }}</option>
-                    {% endfor %}
-                </select>
+                {{ radius_input }}
                 <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
                     <input class="sr-only" type="checkbox" name="kinds" value="pharmacy" {% if options.include_pharmacies %}checked{% endif %}>
                     Farmacias
@@ -68,7 +64,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-5 items-stretch">
                     {% include "orders/_pharmacy_results.html" %}
                     <section aria-label="Mapa de resultados" class="relative z-0 min-w-0 rounded-3xl overflow-hidden border border-base-300">
-                        <div x-ref="map" class="h-[740px]"></div>
+                        <div x-ref="map" class="h-[calc(100dvh-23rem)] min-h-80"></div>
                     </section>
                 </div>
                 <div class="sticky bottom-0 z-10 -mx-6 px-6 py-4 bg-base-200 border-t border-base-300 flex flex-wrap gap-3 items-center justify-between">
@@ -113,6 +109,7 @@
                         dashArray: '6 6',
                         fillOpacity: 0.06,
                     }).addTo(this.map)
+                    this.map.fitBounds(this.circle.getBounds())
                     L.circleMarker(origin, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#1E4FC2', fillOpacity: 1 }).addTo(this.map)
                     this.drawMarkers()
                     this.beforeSwap = (event) => {
@@ -127,6 +124,7 @@
                             if (this.kept.includes(box.value)) box.checked = true
                         })
                         this.circle.setRadius(Number(results.dataset.radiusKm) * 1000)
+                        this.map.fitBounds(this.circle.getBounds())
                         this.drawMarkers()
                         this.$root.action = `${location.pathname}${location.search}`
                     }

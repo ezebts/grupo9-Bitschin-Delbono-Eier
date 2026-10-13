@@ -26,7 +26,7 @@
     </nav>
 
     <div class="flex flex-wrap gap-4 items-start">
-        <section aria-label="Conversaciones" class="flex-[1_1_17.5rem] min-w-64 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 overflow-y-auto bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
+        <section aria-label="Conversaciones" class="flex-[1_1_17.5rem] min-w-64 h-[calc(100dvh-16rem)] max-h-[42rem] min-h-80 overflow-y-auto bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
             <form method="get" action="{% url 'chats:inbox' %}">
                 <label class="sr-only" for="inbox-search">Buscar conversación</label>
                 <input id="inbox-search" class="input w-full" type="search" name="search" value="{{ search }}" placeholder="Buscar cliente o título">

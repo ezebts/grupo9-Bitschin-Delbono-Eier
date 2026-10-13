@@ -6,6 +6,7 @@ from accounts.commands.update_client_profile import (
     UpdateClientProfileParams,
     update_client_profile,
 )
+from accounts.exceptions import InvalidSearchRadiusError
 from accounts.models import ClientAccount, MailPreferences, SearchRadius, User
 from shared.values import Coordinates, Location, PhoneNumber
 
@@ -24,7 +25,7 @@ def client_profile_params():
             '1425',
             Coordinates.create(-34.5842582, -58.4174826),
         ),
-        search_radius=SearchRadius.KM3,
+        search_radius=SearchRadius.create(3),
         health_insurance_number='OSDE 123',
         mail_preferences=MailPreferences(
             on_reply=True,
@@ -61,7 +62,7 @@ def test_client_updates_profile(client_account, client_profile_params):
     )
 
     assert client_account.location == client_profile_params.location
-    assert client_account.search_radius == client_profile_params.search_radius
+    assert client_account.search_radius == client_profile_params.search_radius.km
 
     assert client_account.mail_preferences == client_profile_params.mail_preferences
 
@@ -102,3 +103,14 @@ def test_client_clears_optional_profile_data(client_account, client_profile_para
     assert client_account.phone is None
     assert client_account.location is None
     assert client_account.search_radius is None
+
+
+@pytest.mark.parametrize('km', [1, '37', 300])
+def test_search_radius_accepts_any_distance_in_range(km):
+    assert SearchRadius.create(km).km == int(km)
+
+
+@pytest.mark.parametrize('km', [0, 301, 'diez', None, True])
+def test_search_radius_rejects_invalid_distances(km):
+    with pytest.raises(InvalidSearchRadiusError):
+        SearchRadius.create(km)

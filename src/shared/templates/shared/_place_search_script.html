@@ -4,6 +4,7 @@
             let map
             let marker
             let circle
+            let radius
             return {
                 places: [],
                 active: -1,
@@ -17,7 +18,8 @@
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                     }).addTo(map)
                     map.on('click', ({ latlng }) => this.pin(latlng.lat, latlng.lng))
-                    this.$refs.radius?.addEventListener('change', () => this.drawRadius())
+                    radius = this.$root.querySelector('[data-search-radius]')
+                    radius?.closest('[x-data]').addEventListener('change', () => this.drawRadius())
                     if (this.$refs.latitude.value) this.mark(this.$refs.latitude.value, this.$refs.longitude.value)
                 },
                 async request(path, params) {
@@ -55,8 +57,7 @@
                     this.drawRadius()
                 },
                 radiusKm() {
-                    const field = this.$refs.radius
-                    return field ? Number(field.value) : 0
+                    return radius ? Number(radius.value) : 0
                 },
                 drawRadius() {
                     const kilometers = this.radiusKm()

@@ -1,6 +1,6 @@
 {% load tz widget_tweaks %}
 <div id="customer-chat" class="contents">
-{% timezone request.user.timezone %}
+    {% timezone request.user.timezone %}
     <section aria-labelledby="farm-titulo" class="flex-1 min-w-64 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 overflow-y-auto bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
         <h2 id="farm-titulo" class="px-1 pt-1 pb-2 text-[15px] font-bold">Farmacias contactadas · {{ conversations|length }}</h2>
         {% for conversation in conversations %}
@@ -25,7 +25,7 @@
         {% endfor %}
     </section>
 
-    <section class="flex-[2_1_36rem] min-w-0 h-[calc(100dvh-11rem)] max-h-[42rem] min-h-80 bg-base-100 border border-base-300 rounded-2xl flex flex-col overflow-hidden" aria-label="{% if selected %}Conversación con {{ selected.pharmacy_name }}{% else %}Conversación{% endif %}">
+    <section class="flex-[2_1_36rem] min-w-0 h-[calc(100dvh-12.5rem)] max-h-[42rem] min-h-80 bg-base-100 border border-base-300 rounded-2xl flex flex-col overflow-hidden" aria-label="{% if selected %}Conversación con {{ selected.pharmacy_name }}{% else %}Conversación{% endif %}">
         {% if selected %}
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 border-b border-base-300">
                 <div class="flex items-center gap-3">

@@ -16,6 +16,11 @@ class InvalidCuitError(Error):
 
 
 @dataclass(frozen=True)
+class InvalidSearchRadiusError(Error):
+    message = _('Ingresá una distancia entre 1 y 300 km.')
+
+
+@dataclass(frozen=True)
 class InvalidDeliveryTermsError(Error):
     message = _('Elegí retiro, envío, o ambos.')
 

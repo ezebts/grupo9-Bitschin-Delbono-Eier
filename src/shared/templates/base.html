@@ -16,7 +16,7 @@
         <script defer src="{% static 'shared/js/htmx.min.js' %}"></script>
         {% django_htmx_script %}
     </head>
-    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <body class="min-h-dvh bg-base-200" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         {% block body %}
             {% if user.is_authenticated %}
                 {% include "shared/_nav.html" %}
