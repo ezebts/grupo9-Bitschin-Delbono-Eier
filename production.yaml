@@ -11,7 +11,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /healthz/
-    dockerCommand: sh -c "uv run --no-sync python src/manage.py migrate --noinput && exec uv run --no-sync uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}"
+    dockerCommand: /app/bin/start-web
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: app.settings.production

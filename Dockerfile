@@ -45,6 +45,11 @@ RUN uv run --no-sync python src/manage.py collectstatic --noinput \
     && mkdir -p media \
     && chown -R app:app media staticfiles
 
+COPY bin/start-web /app/bin/start-web
+RUN chmod +x /app/bin/start-web
+
 USER app
 
 EXPOSE 8000
+
+CMD ["/app/bin/start-web"]
