@@ -148,7 +148,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 TAILWIND_CLI_USE_DAISY_UI = True
-TAILWIND_CLI_SRC_CSS = 'shared/source.css'
+TAILWIND_CLI_SRC_CSS = 'shared/static_src/source.css'
 TAILWIND_CLI_DIST_CSS = 'shared/css/tailwind.css'
 
 STATIC_URL = '/static/'

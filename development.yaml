@@ -69,6 +69,7 @@ services:
     command:
       - uv
       - run
+      - --no-sync
       - python
       - src/manage.py
       - tailwind
