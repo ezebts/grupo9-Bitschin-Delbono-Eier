@@ -42,13 +42,9 @@ RUN uv run python src/manage.py tailwind build
 
 RUN uv run --no-sync python src/manage.py collectstatic --noinput \
     && useradd --create-home app \
+    && mkdir -p media \
     && chown -R app:app media staticfiles
 
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-COPY bin /app/bin
-RUN chmod +x /docker-entrypoint.sh /app/bin/prepare-release /app/bin/start-web
+USER app
 
 EXPOSE 8000
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["/app/bin/start-web"]

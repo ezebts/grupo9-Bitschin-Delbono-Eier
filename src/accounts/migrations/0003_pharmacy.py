@@ -28,6 +28,16 @@ WHERE jsonb_typeof(opening_hours) = 'object'
 """
 
 
+def enable_postgis(apps, schema_editor):
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+
+    schema_editor.execute('CREATE EXTENSION IF NOT EXISTS postgis')
+    register = getattr(schema_editor.connection, 'register_geometry_adapters', None)
+    if register is not None:
+        register(schema_editor.connection.connection, True)
+
+
 def copy_coordinates(apps, schema_editor):
     account_model = apps.get_model('accounts', 'PharmacyAccount')
     for account in account_model.objects.all():
@@ -74,6 +84,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(enable_postgis, migrations.RunPython.noop),
         migrations.AddField(
             model_name='user',
             name='_timezone',

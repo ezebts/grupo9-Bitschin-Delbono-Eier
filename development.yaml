@@ -39,6 +39,7 @@ services:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml:ro
       - media:/app/media
+    user: root
     depends_on:
       db:
         condition: service_healthy
@@ -46,17 +47,20 @@ services:
       - sh
       - -c
       - |
-        uv run --no-sync python src/manage.py migrate --noinput &&
-        uv run --no-sync python src/manage.py load_adhered_pharmacies &&
-        exec uv run --no-sync uvicorn app.asgi:application \
-          --host 0.0.0.0 \
-          --port 8000 \
-          --reload \
-          --reload-dir src \
-          --reload-include '*.html' \
-          --reload-include '*.js' \
-          --reload-include '*.css' \
-          --timeout-graceful-shutdown 0
+        mkdir -p /app/media &&
+        chown app:app /app/media &&
+        exec runuser -u app -- sh -c "
+          uv run --no-sync python src/manage.py migrate --noinput &&
+          exec uv run --no-sync uvicorn app.asgi:application \
+            --host 0.0.0.0 \
+            --port 8000 \
+            --reload \
+            --reload-dir src \
+            --reload-include '*.html' \
+            --reload-include '*.js' \
+            --reload-include '*.css' \
+            --timeout-graceful-shutdown 0
+        "
 
   tailwind-watcher:
     <<: *app

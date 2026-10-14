@@ -6,13 +6,16 @@ from .base import *
 
 DEBUG = False
 
-ALLOWED_HOSTS.append('.recetasmagistral.com.ar')
+HOST = HOST.removeprefix('www.')
+
+ALLOWED_HOSTS.append(f'.{HOST}')
+
+CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = [
     f'https://{HOST}',
-    'https://recetasmagistral.com.ar',
-    'https://www.recetasmagistral.com.ar',
+    f'https://www.{HOST}',
 ]
-CSRF_COOKIE_SECURE = True
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 
