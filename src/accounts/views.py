@@ -1,13 +1,15 @@
-from allauth.account.views import SignupView
 from django.contrib import messages
-from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import redirect, render
-from django.urls import reverse_lazy
-from django.utils.html import format_html
+from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
+from accounts.commands.create_account_from_invitation import (
+    create_account_from_invitation,
+)
 from accounts.commands.set_pharmacy_visibility import set_pharmacy_visibility
 from accounts.commands.update_client_profile import update_client_profile
 from accounts.commands.update_pharmacy_profile import update_pharmacy_profile
@@ -18,45 +20,104 @@ from accounts.exceptions import (
 )
 from accounts.forms.client_profile import ClientProfileForm
 from accounts.forms.pharmacy_profile import PharmacyProfileForm
-from accounts.models import InvitationLink
+from accounts.forms.set_password import SetPasswordForm
+from accounts.models import InvitationLink, User
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.pharmacy_profile import get_account_pharmacy_profile
 from shared.views import RoleRequiredMixin
 
+AUTHENTICATION_BACKEND = 'allauth.account.auth_backends.AuthenticationBackend'
 
-class InvitationSignupView(SignupView):
+
+class InvitationSignupView(View):
+    confirm_template_name = 'accounts/invitation_confirm.html'
+    complete_account_template_name = 'accounts/invitation_complete_account.html'
+
     def dispatch(self, request, *args, **kwargs):
-        self.invitation = None
-        if request.method == 'GET':
-            try:
-                self.invitation = InvitationLink.from_value(
-                    request.GET.get('_invitation', ''),
-                )
-            except InvalidInvitationLinkError as error:
-                messages.error(request, error.message)
-                return redirect('account_signup')
+        try:
+            self.invitation = InvitationLink.from_value(
+                request.GET.get('_invitation', ''),
+            )
+        except InvalidInvitationLinkError as error:
+            messages.error(request, error.message)
+            return redirect('account_signup')
+
+        if request.user.is_authenticated:
+            return redirect(self._destination())
+
+        self.user = User.objects.filter(email__iexact=self.invitation.email).first()
 
         return super().dispatch(request, *args, **kwargs)
 
-    def get_initial(self):
-        initial = super().get_initial()
-        if self.invitation is None:
-            return initial
+    def get(self, request):
+        if self.user is None:
+            return render(request, self.confirm_template_name, self._context())
 
-        initial['role'] = self.invitation.role
-        initial['email'] = self.invitation.email
-        initial['invitation_link'] = str(self.invitation)
-        return initial
+        if not self._account_is_complete(self.user):
+            return self._render_complete_account(SetPasswordForm(self.user))
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if self.invitation and self.invitation.next_url:
-            context['redirect_field'] = format_html(
-                '<input type="hidden" name="{}" value="{}">',
-                REDIRECT_FIELD_NAME,
-                self.invitation.next_url,
-            )
-        return context
+        return self._redirect_to_login()
+
+    def post(self, request):
+        if self.user is None:
+            return self._create_account()
+
+        if not self._account_is_complete(self.user):
+            return self._set_password(request.POST)
+
+        return self._redirect_to_login()
+
+    @staticmethod
+    def _account_is_complete(user):
+        return (
+            user.has_usable_password()
+            or user.socialaccount_set.filter(
+                provider='google',
+            ).exists()
+        )
+
+    def _context(self):
+        return {'invitation': self.invitation}
+
+    def _create_account(self):
+        try:
+            user = create_account_from_invitation(self.invitation)
+        except InvalidInvitationLinkError as error:
+            messages.error(self.request, error.message)
+            return redirect('account_signup')
+
+        return self._login_and_redirect(user)
+
+    def _set_password(self, data):
+        form = SetPasswordForm(self.user, data=data)
+
+        if not form.is_valid():
+            return self._render_complete_account(form)
+
+        form.save()
+        return self._login_and_redirect(self.user)
+
+    def _render_complete_account(self, form):
+        return render(
+            self.request,
+            self.complete_account_template_name,
+            {**self._context(), 'form': form},
+        )
+
+    def _login_and_redirect(self, user):
+        login(self.request, user, backend=AUTHENTICATION_BACKEND)
+        return redirect(self._destination())
+
+    def _redirect_to_login(self):
+        login_url = reverse('account_login')
+
+        if not self.invitation.next_url:
+            return redirect(login_url)
+
+        return redirect_to_login(self.invitation.next_url, login_url)
+
+    def _destination(self):
+        return self.invitation.next_url or 'home'
 
 
 class ClientProfileView(LoginRequiredMixin, FormView):
