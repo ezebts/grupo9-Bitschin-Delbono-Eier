@@ -1,0 +1,28 @@
+{% extends "allauth/layouts/base.html" %}
+
+{% block head_title %}Completá tu cuenta{% endblock head_title %}
+
+{% block content %}
+    <div class="space-y-2">
+        <h2 class="text-3xl font-bold">Completá tu cuenta</h2>
+        <p class="text-base-content/70">Ya tenés una cuenta con este email. Elegí una contraseña o continuá con Google para volver a entrar.</p>
+    </div>
+
+    {% include "accounts/_google_button.html" with label="Continuar con Google" next_url=invitation.next_url %}
+
+    <div class="divider">o con tu email</div>
+
+    <form method="post" class="space-y-2">
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div role="alert" class="alert alert-error alert-soft">{{ error }}</div>
+        {% endfor %}
+        <div class="fieldset">
+            <span class="fieldset-legend">Email</span>
+            <p class="py-2">{{ invitation.email }}</p>
+        </div>
+        {% include "shared/_field.html" with field=form.password1 %}
+        {% include "shared/_field.html" with field=form.password2 %}
+        <button type="submit" class="btn btn-primary btn-lg w-full">Continuar</button>
+    </form>
+{% endblock content %}
