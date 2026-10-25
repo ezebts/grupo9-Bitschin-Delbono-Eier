@@ -201,6 +201,39 @@
         );
     }
 
+    async function rewrapDataKeyWithPassword(wrappedKey, password, publicKey) {
+        const dataKey = await unwrapDataKeyWithPassword(wrappedKey, password);
+        return wrapDataKey(dataKey, publicKey);
+    }
+
+    async function rewrapEnvelope(envelope, password, publicKey, side) {
+        const temporaryWrappedKey = envelope.temporary_wrapped_keys.find(
+            (key) => key.side === side,
+        );
+        if (!temporaryWrappedKey) {
+            throw new Error(`No temporary key for the ${side} side.`);
+        }
+
+        const wrappedKey = await rewrapDataKeyWithPassword(
+            temporaryWrappedKey,
+            password,
+            publicKey,
+        );
+        const wrappedKeys = envelope.wrapped_keys.some(
+            (key) => key.fingerprint === wrappedKey.fingerprint,
+        )
+            ? envelope.wrapped_keys
+            : [...envelope.wrapped_keys, wrappedKey];
+
+        return {
+            ...envelope,
+            wrapped_keys: wrappedKeys,
+            temporary_wrapped_keys: envelope.temporary_wrapped_keys.filter(
+                (key) => key.side !== side,
+            ),
+        };
+    }
+
     async function encryptEnvelope(plaintext, publicKeys, temporaryPasswords = []) {
         const dataKey = await generateDataKey();
         return encryptEnvelopeWithKey(
@@ -350,6 +383,8 @@
             unwrapDataKey,
             wrapDataKeyWithPassword,
             unwrapDataKeyWithPassword,
+            rewrapDataKeyWithPassword,
+            rewrapEnvelope,
             encryptEnvelope,
             encryptMessage,
             decryptEnvelope,

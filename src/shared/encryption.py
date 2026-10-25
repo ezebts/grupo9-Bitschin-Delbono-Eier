@@ -2,14 +2,11 @@ import base64
 import binascii
 import hashlib
 import re
-import secrets
 from dataclasses import dataclass
 
-from cryptography.exceptions import InvalidTag, UnsupportedAlgorithm
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from django.utils.translation import gettext_lazy as _
 
 from shared.exceptions import Error
@@ -19,8 +16,7 @@ RSA_CIPHERTEXT_SIZE = RSA_KEY_SIZE // 8
 AES_KEY_SIZE = 32
 AES_NONCE_SIZE = 12
 AES_GCM_TAG_SIZE = 16
-PASSWORD_SALT_SIZE = 16
-PASSWORD_ITERATIONS = 600_000
+TEMPORARY_SALT_SIZE = 16
 ENCRYPTION_SIDES = frozenset({'customer', 'pharmacy'})
 
 
@@ -62,7 +58,7 @@ class TemporaryWrappedKey:
             raise InvalidEncryptedDataError
         if len(_decode_base64(self.ciphertext)) != AES_KEY_SIZE + 16:
             raise InvalidEncryptedDataError
-        if len(_decode_base64(self.salt)) != PASSWORD_SALT_SIZE:
+        if len(_decode_base64(self.salt)) != TEMPORARY_SALT_SIZE:
             raise InvalidEncryptedDataError
         if len(_decode_base64(self.nonce)) != AES_NONCE_SIZE:
             raise InvalidEncryptedDataError
@@ -145,10 +141,6 @@ def _decode_base64(value):
         raise InvalidEncryptedDataError from error
 
 
-def _encode_base64(value):
-    return base64.urlsafe_b64encode(value).decode('ascii').rstrip('=')
-
-
 def _load_public_key(public_key):
     if isinstance(public_key, rsa.RSAPublicKey):
         key = public_key
@@ -196,97 +188,3 @@ def fingerprint_public_key(public_key):
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
     return hashlib.sha256(der).hexdigest()
-
-
-def generate_temporary_password():
-    return secrets.token_urlsafe(32)
-
-
-def _derive_temporary_key(password, salt):
-    if not isinstance(password, str) or not password:
-        raise InvalidEncryptedDataError
-    if not isinstance(salt, bytes) or len(salt) != PASSWORD_SALT_SIZE:
-        raise InvalidEncryptedDataError
-    return PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=AES_KEY_SIZE,
-        salt=salt,
-        iterations=PASSWORD_ITERATIONS,
-    ).derive(password.encode('utf-8'))
-
-
-def wrap_data_key(data_key, public_key):
-    if not isinstance(data_key, bytes) or len(data_key) != AES_KEY_SIZE:
-        raise InvalidEncryptedDataError
-    key = _load_public_key(public_key)
-    wrapped = key.encrypt(
-        data_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
-    return WrappedKey(fingerprint_public_key(key), _encode_base64(wrapped))
-
-
-def wrap_data_key_with_temporary_password(data_key, password, side):
-    if not isinstance(data_key, bytes) or len(data_key) != AES_KEY_SIZE:
-        raise InvalidEncryptedDataError
-    if not isinstance(side, str) or side not in ENCRYPTION_SIDES:
-        raise InvalidEncryptedDataError
-    salt = secrets.token_bytes(PASSWORD_SALT_SIZE)
-    nonce = secrets.token_bytes(AES_NONCE_SIZE)
-    key = _derive_temporary_key(password, salt)
-    ciphertext = AESGCM(key).encrypt(nonce, data_key, None)
-    return TemporaryWrappedKey(
-        side=side,
-        ciphertext=_encode_base64(ciphertext),
-        salt=_encode_base64(salt),
-        nonce=_encode_base64(nonce),
-    )
-
-
-def unwrap_data_key_with_temporary_password(wrapped_key, password):
-    try:
-        key = _derive_temporary_key(password, _decode_base64(wrapped_key.salt))
-        return AESGCM(key).decrypt(
-            _decode_base64(wrapped_key.nonce),
-            _decode_base64(wrapped_key.ciphertext),
-            None,
-        )
-    except InvalidTag as error:
-        raise InvalidEncryptedDataError from error
-
-
-def rewrap_envelope(envelope, password, public_key, side):
-    """Replace a side's temporary data-key wraps with a device public-key wrap."""
-    if not isinstance(envelope, EncryptedEnvelope):
-        raise InvalidEncryptedDataError
-    if not isinstance(side, str) or side not in ENCRYPTION_SIDES:
-        raise InvalidEncryptedDataError
-    temporary_keys = tuple(
-        wrapped for wrapped in envelope.temporary_wrapped_keys if wrapped.side == side
-    )
-    if not temporary_keys:
-        raise InvalidEncryptedDataError
-
-    fingerprint = fingerprint_public_key(public_key)
-    wrapped_keys = list(envelope.wrapped_keys)
-    if not any(wrapped.fingerprint == fingerprint for wrapped in wrapped_keys):
-        for temporary_key in temporary_keys:
-            data_key = unwrap_data_key_with_temporary_password(
-                temporary_key,
-                password,
-            )
-            wrapped_keys.append(wrap_data_key(data_key, public_key))
-
-    remaining_temporary_keys = tuple(
-        wrapped for wrapped in envelope.temporary_wrapped_keys if wrapped.side != side
-    )
-    return EncryptedEnvelope(
-        ciphertext=envelope.ciphertext,
-        nonce=envelope.nonce,
-        wrapped_keys=tuple(wrapped_keys),
-        temporary_wrapped_keys=remaining_temporary_keys,
-    )

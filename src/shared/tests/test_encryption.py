@@ -4,64 +4,55 @@ import pytest
 
 from accounts.models import DeviceKey, User
 from shared.encryption import (
+    EncryptedEnvelope,
     InvalidEncryptedDataError,
     InvalidPublicKeyError,
     TemporaryWrappedKey,
     WrappedKey,
     fingerprint_public_key,
-    generate_temporary_password,
-    rewrap_envelope,
 )
-from shared.tests.encryption import (
-    decrypt_message,
-    encrypt_message,
-    generate_device_key_pair,
-)
+from shared.tests.encryption import generate_device_public_key
 
 
 @pytest.fixture(scope='module')
-def device_key_pair():
-    return generate_device_key_pair()
+def device_public_key():
+    return generate_device_public_key()
 
 
-def test_message_can_be_encrypted_and_decrypted_with_a_device_key(device_key_pair):
-    private_key, public_key, fingerprint = device_key_pair
-    envelope = encrypt_message(
-        'Mensaje protegido',
-        public_keys=((public_key, fingerprint),),
+def test_encrypted_envelope_accepts_a_device_wrapped_key(device_public_key):
+    _, fingerprint = device_public_key
+    wrapped_key = WrappedKey(fingerprint, 'A' * 512)
+
+    envelope = EncryptedEnvelope(
+        ciphertext='A' * 22,
+        nonce='MDEyMzQ1Njc4OWFi',
+        wrapped_keys=(wrapped_key,),
     )
 
-    assert (
-        decrypt_message(envelope, private_key=private_key, fingerprint=fingerprint)
-        == 'Mensaje protegido'
+    assert envelope.wrapped_keys == (wrapped_key,)
+
+
+def test_encrypted_envelope_accepts_a_temporary_wrapped_key():
+    wrapped_key = TemporaryWrappedKey(
+        side='customer',
+        ciphertext='A' * 64,
+        salt='A' * 22,
+        nonce='A' * 16,
     )
 
-
-def test_temporary_key_can_be_rewrapped_for_a_device(device_key_pair):
-    private_key, public_key, fingerprint = device_key_pair
-    password = generate_temporary_password()
-    envelope = encrypt_message(
-        'Mensaje protegido',
-        temporary_passwords=(('customer', password),),
+    envelope = EncryptedEnvelope(
+        ciphertext='A' * 22,
+        nonce='MDEyMzQ1Njc4OWFi',
+        wrapped_keys=(),
+        temporary_wrapped_keys=(wrapped_key,),
     )
 
-    rewrapped = rewrap_envelope(envelope, password, public_key, 'customer')
-
-    assert not rewrapped.temporary_wrapped_keys
-    assert rewrapped.wrapped_keys[0].fingerprint == fingerprint
-    assert (
-        decrypt_message(
-            rewrapped,
-            private_key=private_key,
-            fingerprint=fingerprint,
-        )
-        == 'Mensaje protegido'
-    )
+    assert envelope.temporary_wrapped_keys == (wrapped_key,)
 
 
 @pytest.mark.django_db
-def test_device_key_stores_its_public_key_fingerprint(device_key_pair):
-    _, public_key, fingerprint = device_key_pair
+def test_device_key_stores_its_public_key_fingerprint(device_public_key):
+    public_key, fingerprint = device_public_key
     user = User.objects.create_user(username='device-key@example.com')
 
     device_key = DeviceKey.objects.create(user=user, public_key=public_key)
@@ -83,14 +74,15 @@ def test_device_key_rejects_an_invalid_public_key():
     ],
 )
 def test_envelope_rejects_invalid_ciphertext_or_nonce(
-    device_key_pair,
+    device_public_key,
     ciphertext,
     nonce,
 ):
-    _, public_key, fingerprint = device_key_pair
-    valid = encrypt_message(
-        'Mensaje protegido',
-        public_keys=((public_key, fingerprint),),
+    _, fingerprint = device_public_key
+    valid = EncryptedEnvelope(
+        ciphertext='A' * 22,
+        nonce='MDEyMzQ1Njc4OWFi',
+        wrapped_keys=(WrappedKey(fingerprint, 'A' * 512),),
     )
 
     with pytest.raises(InvalidEncryptedDataError):
@@ -115,8 +107,8 @@ def test_wrapped_key_rejects_invalid_fingerprint_or_ciphertext(
         WrappedKey(fingerprint, wrapped_ciphertext)
 
 
-def test_wrapped_key_rejects_an_invalid_size(device_key_pair):
-    _, _, fingerprint = device_key_pair
+def test_wrapped_key_rejects_an_invalid_size(device_public_key):
+    _, fingerprint = device_public_key
     with pytest.raises(InvalidEncryptedDataError):
         WrappedKey(fingerprint, 'A' * 510)
 
