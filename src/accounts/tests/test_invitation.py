@@ -4,9 +4,11 @@ from urllib.parse import parse_qs, urlencode
 import pytest
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from accounts.commands.signup import signup_with_invitation
+from accounts.exceptions import InvalidInvitationLinkError
 from accounts.models import (
     ClientAccount,
     InvitationLink,
@@ -80,6 +82,73 @@ def test_signup_with_invitation_joins_the_invited_pharmacy():
     assert user.pharmacy_account.pharmacy_id == pharmacy.pk
     assert not ClientAccount.objects.exists()
     assert Pharmacy.objects.count() == 1
+
+
+def test_signup_with_invitation_rejects_a_pharmacy_link_without_a_pharmacy():
+    link = InvitationLink(
+        role=User.Role.PHARMACY,
+        email='farmacia@example.com',
+        next_url='/chats/',
+    )
+
+    with pytest.raises(InvalidInvitationLinkError):
+        signup_with_invitation(link)
+
+    assert not User.objects.exists()
+    assert not Pharmacy.objects.exists()
+
+
+def test_signup_with_invitation_joins_an_existing_pharmacy_user():
+    pharmacy = Pharmacy.objects.create(
+        trade_name='Galénica',
+        request_email='farmacia@example.com',
+    )
+    User.objects.create_user(
+        username=pharmacy.request_email,
+        email=pharmacy.request_email,
+        password=PASSWORD,
+        role=User.Role.PHARMACY,
+    )
+    link = InvitationLink(
+        role=User.Role.PHARMACY,
+        email=pharmacy.request_email,
+        next_url='/chats/',
+        details={'pharmacy_id': pharmacy.pk},
+    )
+
+    user = signup_with_invitation(link)
+    again = signup_with_invitation(link)
+
+    assert again.pk == user.pk
+    assert User.objects.count() == 1
+    assert user.pharmacy_account.pharmacy_id == pharmacy.pk
+    assert PharmacyAccount.objects.count() == 1
+
+
+def test_signup_with_invitation_leaves_an_existing_customer_unchanged():
+    user = User.objects.create_user(
+        username='ana@example.com',
+        email='ana@example.com',
+        password=PASSWORD,
+        role=User.Role.CUSTOMER,
+    )
+    ClientAccount.objects.create(user=user)
+    pharmacy = Pharmacy.objects.create(
+        trade_name='Galénica',
+        request_email=user.email,
+    )
+    link = InvitationLink(
+        role=User.Role.PHARMACY,
+        email=user.email,
+        next_url='/chats/',
+        details={'pharmacy_id': pharmacy.pk},
+    )
+
+    signup_with_invitation(link)
+
+    user.refresh_from_db()
+    assert user.role == User.Role.CUSTOMER
+    assert not PharmacyAccount.objects.exists()
 
 
 @pytest.mark.parametrize(
@@ -222,6 +291,9 @@ def test_invitation_cuenta_completa_redirige_a_login(client, with_google):
     login_url, _, query = response.url.partition('?')
     assert login_url == reverse('account_login')
     assert parse_qs(query) == {'next': ['/orders/']}
+    assert 'Iniciá sesión para continuar.' in [
+        message.message for message in get_messages(response.wsgi_request)
+    ]
 
 
 def test_invalid_invitation_opens_the_normal_signup(client):

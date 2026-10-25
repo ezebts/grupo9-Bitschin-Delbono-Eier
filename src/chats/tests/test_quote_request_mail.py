@@ -1,7 +1,10 @@
 import re
+from http import HTTPStatus
 
 import pytest
+from django.contrib.messages import get_messages
 from django.core import mail
+from django.urls import reverse
 
 from accounts.models import InvitationLink, Pharmacy, PharmacyAccount, User
 from chats.models import Message
@@ -88,6 +91,26 @@ def test_pharmacy_with_an_account_gets_the_conversation_link(
     assert '/chats/?conversation_id=' in found.group(1)
 
 
+def test_existing_user_gets_the_conversation_link(django_capture_on_commit_callbacks):
+    sofia = _customer()
+    User.objects.create_user(
+        username='farmacia.galenica@gmail.com',
+        email='farmacia.galenica@gmail.com',
+        password=None,
+    )
+    pharmacy = Pharmacy.objects.create(
+        trade_name='Farmacia Galénica Palermo',
+        request_email='farmacia.galenica@gmail.com',
+    )
+
+    with django_capture_on_commit_callbacks(execute=True):
+        request_quote(_order(sofia).id, pharmacy.id)
+
+    found = re.search(r'href="([^"]+)"', mail.outbox[0].body)
+    assert '/accounts/invitation/' not in found.group(1)
+    assert '/chats/?conversation_id=' in found.group(1)
+
+
 def test_quote_request_without_an_email_does_not_send(
     django_capture_on_commit_callbacks,
 ):
@@ -101,3 +124,13 @@ def test_quote_request_without_an_email_does_not_send(
     assert Message.objects.filter(
         body='La solicitud también llega por mail',
     ).exists()
+
+
+def test_chats_without_a_session_asks_to_log_in(client):
+    response = client.get(reverse('chats:inbox'))
+
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url.startswith(reverse('account_login'))
+    assert 'Iniciá sesión para continuar.' in [
+        message.message for message in get_messages(response.wsgi_request)
+    ]

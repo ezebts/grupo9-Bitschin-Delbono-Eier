@@ -38,10 +38,20 @@ class InvitationSignupView(View):
             messages.error(request, error.message)
             return redirect('account_signup')
 
-        if request.user.is_authenticated:
-            return redirect(self._destination())
+        try:
+            if request.user.is_authenticated:
+                if request.user.email.lower() == self.invitation.email.lower():
+                    signup_with_invitation(self.invitation)
+                return redirect(self._destination())
 
-        self.user = User.objects.filter(email__iexact=self.invitation.email).first()
+            self.user = User.objects.filter(
+                email__iexact=self.invitation.email,
+            ).first()
+            if self.user is not None:
+                signup_with_invitation(self.invitation)
+        except InvalidInvitationLinkError as error:
+            messages.error(request, error.message)
+            return redirect('account_signup')
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -110,6 +120,7 @@ class InvitationSignupView(View):
         )
 
     def _redirect_to_login(self):
+        messages.info(self.request, 'Iniciá sesión para continuar.')
         login_url = reverse('account_login')
 
         if not self.invitation.next_url:

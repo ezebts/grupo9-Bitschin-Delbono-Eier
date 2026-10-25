@@ -26,7 +26,10 @@ def send_quote_request_mail(quote_request_id):
 
     next_url = _next_url(quote_request)
 
-    if pharmacy.accounts.exists():
+    email_has_user = User.objects.filter(
+        email__iexact=pharmacy.request_email,
+    ).exists()
+    if pharmacy.accounts.exists() or email_has_user:
         action_url = absolute_url(next_url)
     else:
         action_url = absolute_url(
