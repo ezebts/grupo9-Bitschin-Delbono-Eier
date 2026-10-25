@@ -2,12 +2,11 @@ from http import HTTPStatus
 from urllib.parse import parse_qs, urlencode
 
 import pytest
+from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
 from django.urls import reverse
 
-from accounts.commands.create_account_from_invitation import (
-    create_account_from_invitation,
-)
+from accounts.commands.signup import signup_with_invitation
 from accounts.models import (
     ClientAccount,
     InvitationLink,
@@ -41,14 +40,14 @@ def test_invitation_link_round_trip_reuses_the_signed_value():
     assert str(restored) == value
 
 
-def test_create_account_from_invitation_opens_a_client_account_without_password():
+def test_signup_with_invitation_opens_a_client_account_without_password():
     link = InvitationLink(
         role=User.Role.CUSTOMER,
         email='cliente@example.com',
         next_url='/orders/',
     )
 
-    user = create_account_from_invitation(link)
+    user = signup_with_invitation(link)
 
     assert user.email == 'cliente@example.com'
     assert user.first_name == ''
@@ -57,9 +56,12 @@ def test_create_account_from_invitation_opens_a_client_account_without_password(
     assert not user.has_usable_password()
     assert user.client_account.pk
     assert not PharmacyAccount.objects.exists()
+    email_address = EmailAddress.objects.get(user=user, email='cliente@example.com')
+    assert email_address.primary
+    assert email_address.verified
 
 
-def test_create_account_from_invitation_joins_the_invited_pharmacy():
+def test_signup_with_invitation_joins_the_invited_pharmacy():
     pharmacy = Pharmacy.objects.create(
         trade_name='Galénica',
         request_email='farmacia@example.com',
@@ -71,7 +73,7 @@ def test_create_account_from_invitation_joins_the_invited_pharmacy():
         details={'pharmacy_id': pharmacy.pk},
     )
 
-    user = create_account_from_invitation(link)
+    user = signup_with_invitation(link)
 
     assert user.role == User.Role.PHARMACY
     assert not user.has_usable_password()

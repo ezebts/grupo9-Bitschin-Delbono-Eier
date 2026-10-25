@@ -1,5 +1,5 @@
+from allauth.account.utils import complete_signup, perform_login
 from django.contrib import messages
-from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import redirect, render
@@ -7,10 +7,8 @@ from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
-from accounts.commands.create_account_from_invitation import (
-    create_account_from_invitation,
-)
 from accounts.commands.set_pharmacy_visibility import set_pharmacy_visibility
+from accounts.commands.signup import signup_with_invitation
 from accounts.commands.update_client_profile import update_client_profile
 from accounts.commands.update_pharmacy_profile import update_pharmacy_profile
 from accounts.exceptions import (
@@ -25,8 +23,6 @@ from accounts.models import InvitationLink, User
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.pharmacy_profile import get_account_pharmacy_profile
 from shared.views import RoleRequiredMixin
-
-AUTHENTICATION_BACKEND = 'allauth.account.auth_backends.AuthenticationBackend'
 
 
 class InvitationSignupView(View):
@@ -81,12 +77,17 @@ class InvitationSignupView(View):
 
     def _create_account(self):
         try:
-            user = create_account_from_invitation(self.invitation)
+            user = signup_with_invitation(self.invitation)
         except InvalidInvitationLinkError as error:
             messages.error(self.request, error.message)
             return redirect('account_signup')
 
-        return self._login_and_redirect(user)
+        return complete_signup(
+            self.request,
+            user,
+            None,
+            self.invitation.next_url or None,
+        )
 
     def _set_password(self, data):
         form = SetPasswordForm(self.user, data=data)
@@ -95,7 +96,11 @@ class InvitationSignupView(View):
             return self._render_complete_account(form)
 
         form.save()
-        return self._login_and_redirect(self.user)
+        return perform_login(
+            self.request,
+            self.user,
+            redirect_url=self.invitation.next_url or None,
+        )
 
     def _render_complete_account(self, form):
         return render(
@@ -103,10 +108,6 @@ class InvitationSignupView(View):
             self.complete_account_template_name,
             {**self._context(), 'form': form},
         )
-
-    def _login_and_redirect(self, user):
-        login(self.request, user, backend=AUTHENTICATION_BACKEND)
-        return redirect(self._destination())
 
     def _redirect_to_login(self):
         login_url = reverse('account_login')

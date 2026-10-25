@@ -1,3 +1,4 @@
+from allauth.account.models import EmailAddress
 from django.db import transaction
 
 from accounts.exceptions import InvalidInvitationLinkError
@@ -33,11 +34,25 @@ def signup(user: User, role: str):
 
 
 @transaction.atomic
-def signup_with_invitation(user: User, invitation_link: InvitationLink):
-    """Register the user with the role and pharmacy carried by the invitation."""
+def signup_with_invitation(invitation_link: InvitationLink) -> User:
+    """Create the invited account with no usable password and a verified email."""
 
-    user.role = invitation_link.role
-    user.save(update_fields=['role'])
+    user = User(
+        username=invitation_link.email,
+        email=invitation_link.email,
+        first_name='',
+        last_name='',
+        role=invitation_link.role,
+    )
+    user.set_unusable_password()
+    user.save()
+
+    EmailAddress.objects.create(
+        user=user,
+        email=invitation_link.email.lower(),
+        primary=True,
+        verified=True,
+    )
 
     if invitation_link.role == User.Role.CUSTOMER:
         ClientAccount.objects.create(user=user)
@@ -55,3 +70,5 @@ def signup_with_invitation(user: User, invitation_link: InvitationLink):
 
     else:
         raise InvalidInvitationLinkError
+
+    return user
