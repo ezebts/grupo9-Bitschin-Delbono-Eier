@@ -203,20 +203,12 @@
 
     async function encryptEnvelope(plaintext, publicKeys, temporaryPasswords = []) {
         const dataKey = await generateDataKey();
-        const encrypted = await encryptBytes(plaintext, dataKey);
-        const wrappedKeys = await Promise.all(
-            publicKeys.map((publicKey) => wrapDataKey(dataKey, publicKey)),
+        return encryptEnvelopeWithKey(
+            plaintext,
+            dataKey,
+            publicKeys,
+            temporaryPasswords,
         );
-        const temporaryWrappedKeys = await Promise.all(
-            temporaryPasswords.map(({ side, password }) =>
-                wrapDataKeyWithPassword(dataKey, password, side),
-            ),
-        );
-        return {
-            ...encrypted,
-            wrapped_keys: wrappedKeys,
-            temporary_wrapped_keys: temporaryWrappedKeys,
-        };
     }
 
     async function encryptMessage(
