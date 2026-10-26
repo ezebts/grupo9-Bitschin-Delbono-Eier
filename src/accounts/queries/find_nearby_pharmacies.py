@@ -17,7 +17,7 @@ MISSING_HOURS = 'Horario no informado'
 
 
 @dataclass(frozen=True)
-class PharmacyReviewCard:
+class PharmacyCustomerReview:
     initials: str
     name: str
     score: int
@@ -38,7 +38,7 @@ class NearbyPharmacy:
     latitude: float
     longitude: float
     score: Decimal | None
-    reviews: tuple[PharmacyReviewCard, ...]
+    reviews: tuple[PharmacyCustomerReview, ...]
 
 
 def find_nearby_pharmacies(  # noqa: PLR0913
@@ -123,7 +123,7 @@ def find_nearby_pharmacies(  # noqa: PLR0913
             longitude=pharmacy.location.coordinates.longitude,
             score=pharmacy.score,
             reviews=tuple(
-                PharmacyReviewCard(
+                PharmacyCustomerReview(
                     initials=review.author.get_initials(),
                     name=review.author.get_full_name(),
                     score=review.score,
