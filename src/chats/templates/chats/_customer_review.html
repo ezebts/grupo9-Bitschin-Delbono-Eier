@@ -1,0 +1,49 @@
+{% load stars tz widget_tweaks %}
+<section id="customer-review" aria-labelledby="review-title" class="w-full min-w-0 max-w-full bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3.5">
+    {% if review %}
+        <h2 id="review-title" class="text-[15px] font-bold">Tu reseña</h2>
+        <div class="flex items-center gap-2.5">
+            <span aria-hidden="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#12201B] text-white text-sm font-bold">{{ review.initials }}</span>
+            <span class="min-w-0 flex flex-col gap-0.5">
+                <span class="font-semibold text-sm truncate">{{ review.name }}</span>
+                {% timezone request.user.timezone %}
+                    <time class="text-xs text-[#51605A]" datetime="{{ review.created_at|date:'Y-m-d' }}">{{ review.created_at|date:"j b Y" }}</time>
+                {% endtimezone %}
+                {% stars review.score %}
+            </span>
+        </div>
+        {% if review.comment %}
+            <p class="w-full min-w-0 text-sm leading-5 text-[#3F4B47] break-words">{{ review.comment }}</p>
+        {% endif %}
+    {% else %}
+        <h2 id="review-title" class="text-[15px] font-bold">Dejá tu reseña</h2>
+        <p class="text-sm text-[#51605A]">Contanos cómo te fue con esta farmacia. La puntuación es obligatoria.</p>
+        <form method="post" action="{% url 'chats:customer_review' selected.id %}?order_id={{ order_id }}" hx-post="{% url 'chats:customer_review' selected.id %}?order_id={{ order_id }}" hx-target="#customer-review" hx-swap="outerHTML" class="flex flex-col gap-3">
+            {% csrf_token %}
+            <fieldset class="flex flex-col gap-1.5">
+                <legend class="text-sm font-semibold">Puntuación</legend>
+                <div class="flex flex-row-reverse justify-end gap-0.5">
+                    <input id="review-score-5" class="peer/s5 sr-only" type="radio" name="score" value="5" {% if review_form.score.value|stringformat:"s" == "5" %}checked{% endif %} required>
+                    <label for="review-score-5" class="cursor-pointer text-[1.75rem] leading-none text-[#C9D2CD] peer-checked/s5:text-[#0E6B55]" aria-label="5 estrellas">★</label>
+                    <input id="review-score-4" class="peer/s4 sr-only" type="radio" name="score" value="4" {% if review_form.score.value|stringformat:"s" == "4" %}checked{% endif %}>
+                    <label for="review-score-4" class="cursor-pointer text-[1.75rem] leading-none text-[#C9D2CD] peer-checked/s5:text-[#0E6B55] peer-checked/s4:text-[#0E6B55]" aria-label="4 estrellas">★</label>
+                    <input id="review-score-3" class="peer/s3 sr-only" type="radio" name="score" value="3" {% if review_form.score.value|stringformat:"s" == "3" %}checked{% endif %}>
+                    <label for="review-score-3" class="cursor-pointer text-[1.75rem] leading-none text-[#C9D2CD] peer-checked/s5:text-[#0E6B55] peer-checked/s4:text-[#0E6B55] peer-checked/s3:text-[#0E6B55]" aria-label="3 estrellas">★</label>
+                    <input id="review-score-2" class="peer/s2 sr-only" type="radio" name="score" value="2" {% if review_form.score.value|stringformat:"s" == "2" %}checked{% endif %}>
+                    <label for="review-score-2" class="cursor-pointer text-[1.75rem] leading-none text-[#C9D2CD] peer-checked/s5:text-[#0E6B55] peer-checked/s4:text-[#0E6B55] peer-checked/s3:text-[#0E6B55] peer-checked/s2:text-[#0E6B55]" aria-label="2 estrellas">★</label>
+                    <input id="review-score-1" class="peer/s1 sr-only" type="radio" name="score" value="1" {% if review_form.score.value|stringformat:"s" == "1" %}checked{% endif %}>
+                    <label for="review-score-1" class="cursor-pointer text-[1.75rem] leading-none text-[#C9D2CD] peer-checked/s5:text-[#0E6B55] peer-checked/s4:text-[#0E6B55] peer-checked/s3:text-[#0E6B55] peer-checked/s2:text-[#0E6B55] peer-checked/s1:text-[#0E6B55]" aria-label="1 estrella">★</label>
+                </div>
+                {% for error in review_form.score.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+            </fieldset>
+            <label class="flex flex-col gap-1.5 text-sm font-semibold" for="{{ review_form.comment.id_for_label }}">
+                Comentario
+                <span class="font-normal text-[#51605A]">Hasta {{ review_form.comment.field.max_length }} caracteres.</span>
+                {% render_field review_form.comment class="textarea w-full min-w-0 min-h-20 font-normal text-[15px] break-words" %}
+            </label>
+            {% for error in review_form.comment.errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+            {% for error in review_form.non_field_errors %}<span class="text-error text-sm">{{ error }}</span>{% endfor %}
+            <button class="btn btn-primary" type="submit">Enviar reseña</button>
+        </form>
+    {% endif %}
+</section>

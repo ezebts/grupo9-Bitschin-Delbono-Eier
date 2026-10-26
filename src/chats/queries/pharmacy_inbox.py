@@ -131,7 +131,7 @@ def _customer_zone_label(order, pharmacy) -> str:
         return locality
 
     km_label = f'{distance.km:.1f}'.replace('.', ',')
-    return f'{locality} · aprox. {km_label} km en línea recta'
+    return f'{locality} · aprox. {km_label} km'
 
 
 def get_pharmacy_inbox(
@@ -378,14 +378,15 @@ def _fulfillment_steps(order) -> tuple[FulfillmentStep, ...]:
     statuses = list(FulfillmentStatus)
     current = order.fulfillment_status
     current_index = statuses.index(current) if current else -1
+    finished = current == FulfillmentStatus.DELIVERED
 
     return tuple(
         FulfillmentStep(
             label=order.fulfillment_label(status),
             reached_at=events[status].created_at if status in events else None,
             estimated_at=events[status].estimated_at if status in events else None,
-            done=index < current_index,
-            current=index == current_index,
+            done=index < current_index or (finished and index == current_index),
+            current=index == current_index and not finished,
         )
         for index, status in enumerate(statuses)
     )

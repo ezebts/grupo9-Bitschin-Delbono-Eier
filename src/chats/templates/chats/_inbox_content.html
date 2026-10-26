@@ -1,4 +1,4 @@
-{% load tz widget_tweaks %}
+{% load stars tz widget_tweaks %}
 <div id="inbox-content" class="contents">
 {% timezone request.user.timezone %}
     <nav aria-label="Filtrar conversaciones" class="grid gap-2 sm:grid-cols-3">
@@ -115,7 +115,7 @@
             {% endif %}
         </section>
 
-        <aside class="flex w-full flex-[1.3_1_20rem] flex-col gap-4">
+        <aside class="flex w-full min-w-0 flex-[1.3_1_20rem] flex-col gap-4">
             {% if selected.fulfillment_steps %}
                 {% include 'chats/_pharmacy_order_status.html' %}
             {% elif selected and selected.quote_status == 'waiting' %}
@@ -170,7 +170,25 @@
                     {% endif %}
                 </section>
             {% endif %}
-            {% if selected %}
+            {% if selected and review %}
+                <section aria-labelledby="resena-titulo" class="flex w-full min-w-0 max-w-full flex-col gap-3.5 rounded-[18px] border border-[#DCE2DE] bg-base-100 p-[22px]">
+                    <h2 id="resena-titulo" class="text-[15px] font-bold text-[#51605A]">Reseña</h2>
+                    <div class="flex items-center gap-2.5">
+                        <span aria-hidden="true" class="inline-flex shrink-0 items-center justify-center w-9 h-9 rounded-full bg-[#12201B] text-white text-sm font-bold">{{ review.initials }}</span>
+                        <span class="min-w-0 flex flex-col gap-0.5">
+                            <span class="font-semibold truncate">{{ review.name }}</span>
+                            <time class="text-xs font-normal text-[#51605A]" datetime="{{ review.created_at|date:'Y-m-d' }}">{{ review.created_at|date:"j b Y" }}</time>
+                            {% stars review.score %}
+                        </span>
+                    </div>
+                    {% if selected.customer_zone_label %}
+                        <p class="text-sm text-[#3F4B47]">{{ selected.customer_zone_label }}</p>
+                    {% endif %}
+                    {% if review.comment %}
+                        <p class="w-full min-w-0 text-sm leading-5 text-[#3F4B47] break-words">{{ review.comment }}</p>
+                    {% endif %}
+                </section>
+            {% elif selected %}
                 <section aria-labelledby="cliente-titulo" class="flex flex-col gap-2.5 rounded-[18px] border border-[#DCE2DE] bg-base-100 p-[22px]">
                     <h2 id="cliente-titulo" class="text-[15px] font-bold text-[#51605A]">Cliente</h2>
                     <p class="text-[17px] font-bold">{{ selected.customer_name }}</p>

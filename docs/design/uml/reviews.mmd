@@ -1,0 +1,28 @@
+classDiagram
+    QuoteRequest "1" --> "0..1" Review
+    User "1" --> "0..*" Review
+    QuoteRequest "*" --> "1" Pharmacy
+
+    class Review {
+        score: int
+        comment: str
+        createdAt: datetime
+    }
+    class Pharmacy {
+        score: Decimal
+    }
+    class QuoteRequest {
+        orderId: int
+        pharmacyId: int
+    }
+    class User {
+        firstName: str
+        lastName: str
+        +getInitials() str
+    }
+
+    classDef model fill:#FFE86D,stroke:#A28E26,color:#574900
+    class Review:::model
+    class Pharmacy:::model
+    class QuoteRequest:::model
+    class User:::model

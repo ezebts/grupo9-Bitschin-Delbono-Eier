@@ -1,14 +1,28 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
+
+from django.db.models import Prefetch
 
 from accounts.models import Pharmacy, PharmacyKind, PreparationTag
 from accounts.models.clients import SearchRadius
+from orders.models import QuoteRequest
+from reviews.models import Review
 from shared.values import Coordinates
 
 MISSING_ADDRESS = 'Dirección no informada'
 MISSING_KIND = 'Farmacia'
 MISSING_HOURS = 'Horario no informado'
+
+
+@dataclass(frozen=True)
+class PharmacyCustomerReview:
+    initials: str
+    name: str
+    score: int
+    comment: str
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -23,6 +37,8 @@ class NearbyPharmacy:
     tags: tuple[str, ...]
     latitude: float
     longitude: float
+    score: Decimal | None
+    reviews: tuple[PharmacyCustomerReview, ...]
 
 
 def find_nearby_pharmacies(  # noqa: PLR0913
@@ -35,6 +51,7 @@ def find_nearby_pharmacies(  # noqa: PLR0913
     home_delivery: bool,
     timezone: ZoneInfo,
     preparation_tag: PreparationTag | None = None,
+    min_score: int | None = None,
 ) -> tuple[NearbyPharmacy, ...]:
     """Lists visible pharmacies inside the search radius."""
 
@@ -68,6 +85,24 @@ def find_nearby_pharmacies(  # noqa: PLR0913
             _preparation_tags__icontains=preparation_tag.value,
         )
 
+    if min_score is not None:
+        nearby_pharmacies = nearby_pharmacies.filter(score__gte=min_score)
+
+    nearby_pharmacies = nearby_pharmacies.prefetch_related(
+        Prefetch(
+            'quote_requests',
+            queryset=QuoteRequest.objects.order_by(
+                '-reviews__created_at',
+                '-reviews__pk',
+            ).prefetch_related(
+                Prefetch(
+                    'reviews',
+                    queryset=Review.objects.select_related('author'),
+                ),
+            ),
+        ),
+    )
+
     return tuple(
         NearbyPharmacy(
             id=pharmacy.pk,
@@ -86,6 +121,18 @@ def find_nearby_pharmacies(  # noqa: PLR0913
             tags=tuple(sorted(tag.label for tag in pharmacy.preparation_tags)),
             latitude=pharmacy.location.coordinates.latitude,
             longitude=pharmacy.location.coordinates.longitude,
+            score=pharmacy.score,
+            reviews=tuple(
+                PharmacyCustomerReview(
+                    initials=review.author.get_initials(),
+                    name=review.author.get_full_name(),
+                    score=review.score,
+                    comment=review.comment,
+                    created_at=review.created_at,
+                )
+                for quote_request in pharmacy.quote_requests.all()
+                for review in quote_request.reviews.all()
+            ),
         )
         for pharmacy in nearby_pharmacies
     )

@@ -34,7 +34,7 @@
             {% include "shared/_messages.html" %}
 
             <form method="get" action="{% url 'orders:choose' %}" hx-get="{% url 'orders:choose' %}" hx-target="#pharmacy-results" hx-swap="outerHTML" hx-trigger="change" hx-push-url="true" hx-sync="this:replace" class="flex flex-wrap gap-2 items-center" aria-label="Filtros de búsqueda">
-                <input class="input rounded-full h-11 min-h-11 min-w-0 max-w-72 flex-[1_1_11rem] text-[15px]" type="search" value="{{ order.search_area }}" aria-label="Zona de búsqueda" readonly>
+                <input class="rounded-full h-11 min-h-11 w-full min-w-0 max-w-72 flex-[1_1_11rem] px-4 text-[15px] bg-base-300 border border-base-300 text-[#51605A] pointer-events-none select-none" type="text" value="{{ order.search_area }}" aria-label="Zona de búsqueda" disabled>
                 <label class="sr-only" for="search-radius">Distancia máxima</label>
                 {{ radius_input }}
                 <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-[#12201B] has-[:checked]:text-white has-[:checked]:border-[#12201B]">
@@ -57,6 +57,20 @@
                     <input class="sr-only" type="checkbox" name="preparation" value="1" {% if options.preparation %}checked{% endif %}>
                     Tipo de preparación
                 </label>
+                <fieldset class="flex flex-wrap gap-1 items-center">
+                    <legend class="sr-only">Puntuación mínima</legend>
+                    <label class="btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-primary has-[:checked]:text-primary-content has-[:checked]:border-primary">
+                        <input class="sr-only" type="radio" name="score" value="" {% if not options.min_score %}checked{% endif %}>
+                        Todas
+                    </label>
+                    {% for value in "54321" %}
+                        <label class="group btn rounded-full h-11 min-h-11 shrink-0 whitespace-nowrap px-4 text-[15px] font-semibold bg-base-100 has-[:checked]:bg-primary has-[:checked]:text-primary-content has-[:checked]:border-primary">
+                            <input class="sr-only" type="radio" name="score" value="{{ value }}" {% if options.min_score|stringformat:"s" == value %}checked{% endif %}>
+                            <span class="text-[#0E6B55] group-has-[:checked]:text-white" aria-hidden="true">★</span>
+                            {{ value }}
+                        </label>
+                    {% endfor %}
+                </fieldset>
             </form>
 
             <form method="post" action="{{ request.get_full_path }}" class="space-y-6" x-data="pharmacyPicker">
@@ -89,13 +103,118 @@
 {% block extra_body %}
     <script>
         document.addEventListener('alpine:init', () => {
+            Alpine.data('reviewCarousel', () => ({
+                canPrev: false,
+                canNext: false,
+                dragging: false,
+                startX: 0,
+                startScroll: 0,
+                moved: false,
+                init() {
+                    this.edges()
+                },
+                edges() {
+                    const track = this.$refs.track
+                    const style = getComputedStyle(track)
+                    const start = parseFloat(style.paddingLeft) || 0
+                    const end = parseFloat(style.paddingRight) || 0
+                    this.canPrev = track.scrollLeft > start + 2
+                    this.canNext = track.scrollLeft + track.clientWidth < track.scrollWidth - end - 2
+                },
+                move(direction) {
+                    const track = this.$refs.track
+                    const card = track.querySelector('article')
+                    const gap = parseFloat(getComputedStyle(track).columnGap) || 0
+                    track.scrollBy({ left: direction * (card.offsetWidth + gap), behavior: 'smooth' })
+                },
+                grab(event) {
+                    if (event.pointerType !== 'mouse' || event.button !== 0) return
+                    this.dragging = true
+                    this.moved = false
+                    this.startX = event.clientX
+                    this.startScroll = this.$refs.track.scrollLeft
+                    this.$refs.track.style.scrollSnapType = 'none'
+                    this.$refs.track.setPointerCapture(event.pointerId)
+                },
+                drag(event) {
+                    if (!this.dragging) return
+                    const delta = event.clientX - this.startX
+                    if (Math.abs(delta) > 4) this.moved = true
+                    this.$refs.track.scrollLeft = this.startScroll - delta
+                },
+                release(event) {
+                    if (!this.dragging) return
+                    this.dragging = false
+                    const track = this.$refs.track
+                    if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId)
+                    track.style.scrollSnapType = ''
+                    if (!this.moved) return
+                    const port = track.getBoundingClientRect().left
+                    let card = null
+                    let best = Infinity
+                    for (const item of track.querySelectorAll('article')) {
+                        const dist = Math.abs(item.getBoundingClientRect().left - port)
+                        if (dist < best) {
+                            best = dist
+                            card = item
+                        }
+                    }
+                    track.scrollTo({ left: track.scrollLeft + card.getBoundingClientRect().left - port, behavior: 'smooth' })
+                },
+            }))
+            Alpine.data('reviewTip', () => ({
+                tip: false,
+                above: true,
+                tail: 20,
+                wait: null,
+                init() {
+                    this.onScroll = () => this.hide()
+                    window.addEventListener('scroll', this.onScroll, true)
+                },
+                destroy() {
+                    clearTimeout(this.wait)
+                    window.removeEventListener('scroll', this.onScroll, true)
+                    if (this.$refs.tip.matches(':popover-open')) this.$refs.tip.hidePopover()
+                },
+                show() {
+                    clearTimeout(this.wait)
+                    const comment = this.$refs.comment
+                    if (comment.scrollHeight <= comment.clientHeight + 1) return
+                    this.wait = setTimeout(() => { this.tip = true }, 500)
+                },
+                hide() {
+                    clearTimeout(this.wait)
+                    this.tip = false
+                },
+                place() {
+                    const panel = this.$refs.tip
+                    if (!this.tip) {
+                        if (panel.matches(':popover-open')) panel.hidePopover()
+                        return
+                    }
+                    panel.showPopover()
+                    const box = this.$refs.comment.getBoundingClientRect()
+                    const width = Math.min(288, window.innerWidth - 16)
+                    panel.style.width = `${width}px`
+                    const height = panel.getBoundingClientRect().height
+                    let left = box.left
+                    if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width
+                    if (left < 8) left = 8
+                    const above = box.top - height - 12 >= 8
+                    panel.style.left = `${left}px`
+                    panel.style.top = `${above ? box.top - height - 12 : box.bottom + 12}px`
+                    this.above = above
+                    const point = box.left + (box.width / 2) - left - 6
+                    this.tail = Math.min(Math.max(16, point), width - 28)
+                },
+            }))
             Alpine.data('pharmacyPicker', () => ({
                 markers: [],
                 selected: {{ chosen|length }},
                 kept: [],
                 init() {
                     const origin = [{{ order.latitude|stringformat:"s" }}, {{ order.longitude|stringformat:"s" }}]
-                    this.map = L.map(this.$refs.map, { scrollWheelZoom: false }).setView(origin, 14)
+                    this.map = L.map(this.$refs.map, { scrollWheelZoom: false, zoomSnap: 0 }).setView(origin, 14)
                     this.map.invalidateSize()
                     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 19,
@@ -109,7 +228,27 @@
                         dashArray: '6 6',
                         fillOpacity: 0.06,
                     }).addTo(this.map)
-                    this.map.fitBounds(this.circle.getBounds())
+                    this.fitRadius({{ options.radius_km|stringformat:"s" }})
+                    const focus = L.control({ position: 'topleft' })
+                    focus.onAdd = () => {
+                        const bar = L.DomUtil.create('div', 'leaflet-bar')
+                        const link = L.DomUtil.create('a', '', bar)
+                        link.href = '#'
+                        link.title = 'Centrar en la ubicación'
+                        link.setAttribute('aria-label', 'Centrar en la ubicación')
+                        link.style.display = 'flex'
+                        link.style.alignItems = 'center'
+                        link.style.justifyContent = 'center'
+                        link.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 5v2.5M12 16.5V19M5 12h2.5M16.5 12H19"/></svg>'
+                        L.DomEvent.disableClickPropagation(bar)
+                        L.DomEvent.on(link, 'click', (event) => {
+                            L.DomEvent.preventDefault(event)
+                            this.focusOrigin()
+                        })
+                        return bar
+                    }
+                    focus.addTo(this.map)
+                    this.map.on('zoomend', () => this.paint())
                     L.circleMarker(origin, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#1E4FC2', fillOpacity: 1 }).addTo(this.map)
                     this.drawMarkers()
                     this.beforeSwap = (event) => {
@@ -123,8 +262,7 @@
                         this.boxes().forEach((box) => {
                             if (this.kept.includes(box.value)) box.checked = true
                         })
-                        this.circle.setRadius(Number(results.dataset.radiusKm) * 1000)
-                        this.map.fitBounds(this.circle.getBounds())
+                        this.fitRadius(Number(results.dataset.radiusKm))
                         this.drawMarkers()
                         this.$root.action = `${location.pathname}${location.search}`
                     }
@@ -158,6 +296,27 @@
                     box.checked = !box.checked
                     this.paint()
                 },
+                fitRadius(km) {
+                    const origin = this.circle.getLatLng()
+                    this.circle.setRadius(5 * 1000)
+                    this.farthestZoom = this.map.getBoundsZoom(this.circle.getBounds())
+                    this.circle.setRadius(km * 1000)
+                    const zoom = Math.max(this.farthestZoom, this.map.getBoundsZoom(this.circle.getBounds()))
+                    this.map.setView(origin, zoom, { animate: true })
+                },
+                focusOrigin() {
+                    const origin = this.circle.getLatLng()
+                    const radius = this.circle.getRadius()
+                    this.circle.setRadius(1000)
+                    const zoom = this.map.getBoundsZoom(this.circle.getBounds())
+                    this.circle.setRadius(radius)
+                    this.map.setView(origin, zoom, { animate: true })
+                },
+                badgeScale() {
+                    const farthest = this.farthestZoom
+                    const zoom = Math.min(farthest + 2, Math.max(farthest, this.map.getZoom()))
+                    return 0.8 + 0.2 * ((zoom - farthest) / 2)
+                },
                 paint() {
                     const selected = new Set(this.boxes().filter((box) => box.checked).map((box) => Number(box.value)))
                     this.selected = selected.size
@@ -169,10 +328,16 @@
                     const background = selected ? '#0E6B55' : '#FFFFFF'
                     const color = selected ? '#FFFFFF' : '#12201B'
                     const border = selected ? '#0E6B55' : '#C9D2CD'
+                    const scoreColor = selected ? '#BFE3D5' : '#0E6B55'
+                    const scale = this.badgeScale()
+                    const size = (value) => Math.round(value * scale)
+                    const score = pharmacy.score
+                        ? `<span style="margin-left:${size(6)}px;color:${scoreColor}">${pharmacy.score} ★</span>`
+                        : ''
                     return L.divIcon({
                         className: '',
                         iconSize: null,
-                        html: `<span style="display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1.5px solid ${border};border-radius:999px;background:${background};color:${color};font-weight:700;font-size:13px;white-space:nowrap;box-shadow:0 3px 10px rgba(18,32,27,.2)">${pharmacy.name}</span>`,
+                        html: `<span style="display:inline-flex;align-items:center;min-height:${size(36)}px;padding:0 ${size(12)}px;border:1.5px solid ${border};border-radius:999px;background:${background};color:${color};font-weight:700;font-size:${size(13)}px;white-space:nowrap;box-shadow:0 3px 10px rgba(18,32,27,.2)">${pharmacy.name}${score}</span>`,
                     })
                 },
             }))

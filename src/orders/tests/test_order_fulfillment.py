@@ -7,6 +7,7 @@ from chats.queries.customer_inbox import (
     PREPARATION_SYSTEM_MESSAGE,
     get_customer_conversation,
 )
+from chats.queries.pharmacy_inbox import get_conversation
 from chats.tests.support import open_conversation
 from orders.commands.accept_quote import accept_quote
 from orders.commands.advance_order import AdvanceOrderParams, advance_order
@@ -73,6 +74,9 @@ def test_pharmacy_moves_an_accepted_order_until_it_is_delivered():
         == 'La farmacia marcó el pedido como «Entregado».'
     )
     assert list_client_orders(customer.id, status=OrderProgress.FINISHED).finished == 1
+    opened = get_conversation(pharmacy_user.id, conversation.id)
+    assert [step.done for step in opened.fulfillment_steps] == [True, True, True, True]
+    assert not any(step.current for step in opened.fulfillment_steps)
     _assert_raises(
         OrderCannotAdvanceError,
         lambda: advance_order(

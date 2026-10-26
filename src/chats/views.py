@@ -23,6 +23,9 @@ from orders.commands.reject_quote import reject_quote
 from orders.commands.submit_quote import submit_quote
 from orders.commands.withdraw_quote import withdraw_quote
 from orders.models import Order, QuoteRequest, QuoteRequestStatus
+from reviews.commands.submit_review import submit_review
+from reviews.forms import ReviewForm
+from reviews.queries.conversation_review import get_conversation_review
 from shared.exceptions import Error
 from shared.views import RoleRequiredMixin
 
@@ -128,6 +131,7 @@ class PharmacyInboxMixin(RoleRequiredMixin):
             waiting_count=inbox.waiting_count,
             quoted_count=inbox.quoted_count,
             accepted_count=inbox.accepted_count,
+            review=get_conversation_review(selected.id) if selected else None,
         )
         return context
 
@@ -281,6 +285,7 @@ class CustomerInboxMixin(RoleRequiredMixin):
         return [self.template_name]
 
     def get_context_data(self, **kwargs):
+        review_form = kwargs.pop('review_form', None)
         context = super().get_context_data(**kwargs)
         user_id = self.request.user.id
         conversation_id = self.conversation_id()
@@ -320,6 +325,12 @@ class CustomerInboxMixin(RoleRequiredMixin):
             prescription_url=inbox.prescription_url,
             order_id=order_id,
             form=context.get('form', CustomerMessageForm()),
+            review=(
+                get_conversation_review(selected.id)
+                if selected is not None and selected.delivered
+                else None
+            ),
+            review_form=review_form or ReviewForm(),
         )
         return context
 
@@ -382,6 +393,40 @@ class CustomerQuoteAnswerView(RoleRequiredMixin, View):
             return HttpResponse(headers={'HX-Redirect': url})
 
         return redirect(url)
+
+
+class CustomerReviewView(CustomerInboxMixin, TemplateView):
+    http_method_names = ('post',)
+    partial_template_name = 'chats/_customer_review.html'
+
+    def get_template_names(self):
+        if self.request.htmx:
+            return [self.partial_template_name]
+        return [self.template_name]
+
+    def post(self, request, conversation_id):
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            try:
+                submit_review(
+                    request.user.id,
+                    conversation_id,
+                    form.cleaned_data['score'],
+                    form.cleaned_data['comment'],
+                )
+            except QuoteRequest.DoesNotExist:
+                raise Http404 from None
+            except Error as error:
+                form.add_error(None, error.message)
+
+        if form.is_valid() and not request.htmx:
+            url = (
+                f'{reverse("chats:customer_inbox")}'
+                f'?order_id={self.order_id()}&conversation_id={conversation_id}'
+            )
+            return redirect(url)
+
+        return self.render_to_response(self.get_context_data(review_form=form))
 
 
 class AcceptQuoteView(CustomerQuoteAnswerView):

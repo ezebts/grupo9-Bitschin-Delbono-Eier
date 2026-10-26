@@ -22,6 +22,7 @@ from orders.commands.temp_prescriptions import (
 from orders.forms import NewOrderForm
 from orders.models import OrderProgress
 from orders.queries.client_orders import list_client_orders
+from reviews.models import MAX_SCORE, MIN_SCORE
 from shared.values import Coordinates
 from shared.views import RoleRequiredMixin
 
@@ -199,6 +200,10 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
     def get_search_params(self, query):
         kinds = query.getlist('kinds')
         default_search_radius = SearchRadius.default_km
+        raw_score = query.get('score', '')
+        min_score = int(raw_score) if raw_score.isdigit() else None
+        if min_score is not None and not MIN_SCORE <= min_score <= MAX_SCORE:
+            min_score = None
 
         if 'radius' not in query:
             customer_profile = get_account_client_profile(self.request.user.id)
@@ -209,6 +214,7 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
                 'open_now': False,
                 'home_delivery': False,
                 'preparation': False,
+                'min_score': min_score,
             }
 
         try:
@@ -223,6 +229,7 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
             'open_now': 'open' in query,
             'home_delivery': 'delivery' in query,
             'preparation': 'preparation' in query,
+            'min_score': min_score,
         }
 
     def get_context_data(self, **kwargs):
@@ -243,6 +250,7 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
                 if options['preparation']
                 else None
             ),
+            min_score=options['min_score'],
         )
 
         chosen = set(self.request.session.get(self.selected_pharmacies_session_key, []))
@@ -264,6 +272,9 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
                     'name': pharmacy.name,
                     'latitude': pharmacy.latitude,
                     'longitude': pharmacy.longitude,
+                    'score': (
+                        None if pharmacy.score is None else f'{pharmacy.score:.1f}'
+                    ),
                 }
                 for pharmacy in pharmacies
             ],

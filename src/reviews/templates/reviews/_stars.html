@@ -1,0 +1,5 @@
+<span class="inline-flex gap-0.5 text-[#0E6B55]" aria-label="{{ score }} de 5">
+    {% for on in stars %}
+        <span class="{% if not on %}text-[#C9D2CD]{% endif %}" aria-hidden="true">★</span>
+    {% endfor %}
+</span>

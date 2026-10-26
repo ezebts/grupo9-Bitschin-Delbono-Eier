@@ -11,6 +11,7 @@
                 active: -1,
                 loading: false,
                 error: '',
+                wait: null,
                 init() {
                     map = L.map(this.$refs.map, { scrollWheelZoom: false }).setView([-38.4, -63.6], 4)
                     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -22,6 +23,13 @@
                     radius = this.$root.querySelector('[data-search-radius]')
                     radius?.closest('[x-data]').addEventListener('change', () => this.drawRadius())
                     if (this.$refs.latitude.value) this.mark(this.$refs.latitude.value, this.$refs.longitude.value)
+                },
+                destroy() {
+                    clearTimeout(this.wait)
+                },
+                queue() {
+                    clearTimeout(this.wait)
+                    this.wait = setTimeout(() => this.search(), 400)
                 },
                 async request(path, params) {
                     this.loading = true
@@ -89,11 +97,16 @@
                     circle = null
                 },
                 async search() {
+                    clearTimeout(this.wait)
                     const text = this.$refs.text.value.trim()
-                    if (text.length < 3 || this.loading) return
+                    if (text.length < 3) return
+                    if (this.loading) {
+                        this.queue()
+                        return
+                    }
                     typed = { number: text.match(/(\d+)\s*(,|$)/)?.[1] || '', road: null }
                     const places = await this.request('search', { q: text, countrycodes: 'ar', limit: 5 })
-                    if (!places) return
+                    if (!places || this.$refs.text.value.trim() !== text) return
                     this.places = places.map((place) => {
                         const road = place.street || place.name || ''
                         if (!typed.number || place.housenumber || !road || road.includes(typed.number)) return place
@@ -107,6 +120,7 @@
                     this.active = (this.active + step + this.places.length) % this.places.length
                 },
                 enter() {
+                    clearTimeout(this.wait)
                     if (this.places.length) this.choose(this.places[Math.max(this.active, 0)])
                     else this.search()
                 },
