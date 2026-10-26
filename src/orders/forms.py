@@ -32,6 +32,27 @@ class NewOrderParams:
     note: str
 
 
+class OrderPrescriptionForm(forms.Form):
+    prescription_file = forms.FileField(
+        label='Receta médica',
+        validators=[
+            FileExtensionValidator(
+                PRESCRIPTION_EXTENSIONS,
+                message='La receta tiene que ser un PDF, JPG o PNG.',
+            ),
+        ],
+        error_messages={'required': 'Elegí un archivo de receta.'},
+        widget=forms.FileInput(attrs={'accept': '.pdf,.jpg,.jpeg,.png'}),
+    )
+
+    def clean_prescription_file(self):
+        file = self.cleaned_data['prescription_file']
+        if file and file.size > PRESCRIPTION_MAX_SIZE:
+            message = 'La receta puede pesar hasta 10 MB.'
+            raise ValidationError(message, code='too_large')
+        return file
+
+
 class NewOrderForm(TypedForm[NewOrderParams]):
     preparation_tag = forms.ChoiceField(
         label='Tipo de preparación',

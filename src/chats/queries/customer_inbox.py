@@ -91,6 +91,7 @@ class CustomerInbox:
     quotes_total: int
     prescription_name: str
     prescription_url: str
+    can_change_prescription: bool
 
 
 def get_customer_inbox(user_id, order_id) -> CustomerInbox:
@@ -186,6 +187,7 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
             Path(order.prescription.name).name if order.prescription else ''
         ),
         prescription_url=order.prescription.url if order.prescription else '',
+        can_change_prescription=order.can_change_prescription,
     )
 
 

@@ -37,7 +37,6 @@ def create_order(user_id, params: CreateOrderParams):
     order.save()
 
     if params.prescription is not None:
-        params.prescription.seek(0)
         order.attach_prescription(params.prescription)
         order.save(update_fields=['prescription'])
 

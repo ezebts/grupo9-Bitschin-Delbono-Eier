@@ -51,3 +51,13 @@ class InvalidDeliveryCostError(Error):
 @dataclass(frozen=True)
 class ExpiredQuoteDateError(Error):
     message = 'La fecha de vencimiento no puede estar en el pasado.'
+
+
+@dataclass(frozen=True)
+class PrescriptionCannotChangeError(Error):
+    message = 'La receta solo se puede cambiar antes de aceptar un presupuesto.'
+
+
+@dataclass(frozen=True)
+class PrescriptionAlreadyAttachedError(Error):
+    message = 'Este pedido ya tiene una receta.'

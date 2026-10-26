@@ -19,9 +19,14 @@ from chats.queries.customer_inbox import (
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
 from orders.commands.accept_quote import accept_quote
 from orders.commands.advance_order import advance_order
+from orders.commands.change_prescription import (
+    attach_order_prescription,
+    remove_order_prescription,
+)
 from orders.commands.reject_quote import reject_quote
 from orders.commands.submit_quote import submit_quote
 from orders.commands.withdraw_quote import withdraw_quote
+from orders.forms import OrderPrescriptionForm
 from orders.models import Order, QuoteRequest, QuoteRequestStatus
 from reviews.commands.submit_review import submit_review
 from reviews.forms import ReviewForm
@@ -323,6 +328,7 @@ class CustomerInboxMixin(RoleRequiredMixin):
             sent_at=inbox.created_at,
             prescription_name=inbox.prescription_name,
             prescription_url=inbox.prescription_url,
+            can_change_prescription=inbox.can_change_prescription,
             order_id=order_id,
             form=context.get('form', CustomerMessageForm()),
             review=(
@@ -337,6 +343,42 @@ class CustomerInboxMixin(RoleRequiredMixin):
 
 class CustomerInboxView(CustomerInboxMixin, TemplateView):
     pass
+
+
+class CustomerPrescriptionView(RoleRequiredMixin, View):
+    http_method_names = ('post',)
+
+    def allows(self, user):
+        return user.is_customer
+
+    def post(self, request):
+        order_id = request.GET.get('order_id', '')
+        if not order_id.isdigit():
+            raise Http404
+
+        try:
+            if request.POST.get('remove'):
+                remove_order_prescription(request.user.id, int(order_id))
+            else:
+                form = OrderPrescriptionForm(request.POST, request.FILES)
+                if form.is_valid():
+                    attach_order_prescription(
+                        request.user.id,
+                        int(order_id),
+                        form.cleaned_data['prescription_file'],
+                    )
+                else:
+                    messages.error(request, form.errors['prescription_file'][0])
+        except Order.DoesNotExist:
+            raise Http404 from None
+        except Error as error:
+            messages.error(request, error.message)
+
+        url = f'{reverse("chats:customer_inbox")}?order_id={order_id}'
+        conversation_id = request.GET.get('conversation_id', '')
+        if conversation_id.isdigit():
+            url = f'{url}&conversation_id={conversation_id}'
+        return redirect(url)
 
 
 class CustomerReplyView(CustomerInboxMixin, FormView):

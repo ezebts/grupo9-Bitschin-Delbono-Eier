@@ -8,6 +8,11 @@ urlpatterns = [
     path('', views.PharmacyInboxView.as_view(), name='inbox'),
     path('my/', views.CustomerInboxView.as_view(), name='customer_inbox'),
     path(
+        'my/prescription/',
+        views.CustomerPrescriptionView.as_view(),
+        name='customer_prescription',
+    ),
+    path(
         'my/<int:conversation_id>/messages/',
         views.CustomerReplyView.as_view(),
         name='customer_reply',
