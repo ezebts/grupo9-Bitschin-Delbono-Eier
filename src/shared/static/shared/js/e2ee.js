@@ -367,13 +367,103 @@
         );
     }
 
+    function openDeviceKeyStore(mode) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('magistral-e2ee', 1);
+            request.onupgradeneeded = () => {
+                request.result.createObjectStore('device-keys', {
+                    keyPath: 'fingerprint',
+                });
+            };
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                resolve(
+                    request.result
+                        .transaction('device-keys', mode)
+                        .objectStore('device-keys'),
+                );
+            };
+        });
+    }
+
+    function storeRequest(request) {
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function createDeviceKey() {
+        const pair = await generateDeviceKeyPair();
+        const publicKey = await exportPublicKey(pair.publicKey);
+        const deviceKey = {
+            fingerprint: await fingerprintPublicKey(publicKey),
+            publicKey,
+            privateKey: pair.privateKey,
+        };
+        const store = await openDeviceKeyStore('readwrite');
+        await storeRequest(store.put(deviceKey));
+        return deviceKey;
+    }
+
+    async function getDeviceKey(fingerprints) {
+        const store = await openDeviceKeyStore('readonly');
+        const deviceKeys = await storeRequest(store.getAll());
+        return (
+            deviceKeys.find((deviceKey) =>
+                fingerprints.includes(deviceKey.fingerprint),
+            ) ?? null
+        );
+    }
+
+    async function ensureDeviceKey(account) {
+        const deviceKey = await getDeviceKey(account.fingerprints);
+        if (deviceKey) {
+            return deviceKey;
+        }
+        const created = await createDeviceKey();
+        await htmx.ajax('POST', account.register_url, {
+            values: { public_key: created.publicKey },
+            swap: 'none',
+        });
+        return created;
+    }
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        const field = form.querySelector('[data-e2ee-public-key]');
+        if (!field || field.value || form.dataset.e2eeReady) {
+            return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        createDeviceKey()
+            .then((deviceKey) => {
+                field.value = deviceKey.publicKey;
+            })
+            .catch(() => {})
+            .finally(() => {
+                form.dataset.e2eeReady = 'true';
+                setTimeout(() => form.requestSubmit());
+            });
+    }, true);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const account = document.getElementById('e2ee-account');
+        if (account) {
+            ensureDeviceKey(JSON.parse(account.textContent)).catch(() => {});
+        }
+    });
+
     window.E2EE = Object.freeze({
         keys: Object.freeze({
             generateDeviceKeyPair,
             exportPublicKey,
             importPublicKey,
             fingerprintPublicKey,
-            getDeviceKey: async () => null,
+            createDeviceKey,
+            getDeviceKey,
+            ensureDeviceKey,
         }),
         messages: Object.freeze({
             generateDataKey,

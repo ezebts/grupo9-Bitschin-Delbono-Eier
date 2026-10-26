@@ -1,12 +1,16 @@
+from http import HTTPStatus
+
 from allauth.account.utils import complete_signup, perform_login
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
+from accounts.commands.register_device_key import register_device_key
 from accounts.commands.set_pharmacy_visibility import set_pharmacy_visibility
 from accounts.commands.signup import signup_with_invitation
 from accounts.commands.update_client_profile import update_client_profile
@@ -17,11 +21,13 @@ from accounts.exceptions import (
     PharmacyCantClearSearchData,
 )
 from accounts.forms.client_profile import ClientProfileForm
+from accounts.forms.encryption_keys import DeviceKeyForm, EncryptionKeysForm
 from accounts.forms.pharmacy_profile import PharmacyProfileForm
 from accounts.forms.set_password import SetPasswordForm
 from accounts.models import InvitationLink, User
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.pharmacy_profile import get_account_pharmacy_profile
+from shared.exceptions import Error
 from shared.views import RoleRequiredMixin
 
 
@@ -57,7 +63,7 @@ class InvitationSignupView(View):
 
     def get(self, request):
         if self.user is None:
-            return render(request, self.confirm_template_name, self._context())
+            return self._render_confirm(request, EncryptionKeysForm())
 
         if not self._account_is_complete(self.user):
             return self._render_complete_account(SetPasswordForm(self.user))
@@ -85,9 +91,23 @@ class InvitationSignupView(View):
     def _context(self):
         return {'invitation': self.invitation}
 
+    def _render_confirm(self, request, form):
+        return render(
+            request,
+            self.confirm_template_name,
+            {**self._context(), 'form': form},
+        )
+
     def _create_account(self):
+        form = EncryptionKeysForm(self.request.POST)
+        if not form.is_valid():
+            return self._render_confirm(self.request, form)
+
         try:
-            user = signup_with_invitation(self.invitation)
+            user = signup_with_invitation(
+                self.invitation,
+                form.cleaned_params.public_key,
+            )
         except InvalidInvitationLinkError as error:
             messages.error(self.request, error.message)
             return redirect('account_signup')
@@ -130,6 +150,23 @@ class InvitationSignupView(View):
 
     def _destination(self):
         return self.invitation.next_url or 'home'
+
+
+class DeviceKeyView(LoginRequiredMixin, FormView):
+    form_class = DeviceKeyForm
+    http_method_names = ('post',)
+
+    def form_valid(self, form):
+        try:
+            register_device_key(self.request.user.id, form.cleaned_params)
+        except Error as error:
+            form.add_error('public_key', error)
+            return self.form_invalid(form)
+
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)
+
+    def form_invalid(self, _form):
+        return HttpResponse(status=HTTPStatus.BAD_REQUEST)
 
 
 class ClientProfileView(LoginRequiredMixin, FormView):

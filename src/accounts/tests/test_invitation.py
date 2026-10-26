@@ -17,6 +17,7 @@ from accounts.models import (
     User,
 )
 from accounts.views import InvitationSignupView
+from shared.tests.encryption import generate_device_public_key
 
 pytestmark = pytest.mark.django_db
 
@@ -195,7 +196,9 @@ def test_invitation_primera_vez_post_crea_cuenta_y_loguea(client):
         details={'pharmacy_id': pharmacy.pk},
     )
 
-    signed_up = client.post(str(link))
+    public_key, fingerprint = generate_device_public_key()
+
+    signed_up = client.post(str(link), {'public_key': public_key})
 
     assert signed_up.status_code == HTTPStatus.FOUND
     assert signed_up.url == '/chats/'
@@ -203,6 +206,7 @@ def test_invitation_primera_vez_post_crea_cuenta_y_loguea(client):
     assert user.role == User.Role.PHARMACY
     assert not user.has_usable_password()
     assert user.pharmacy_account.pharmacy_id == pharmacy.pk
+    assert user.device_keys.get().fingerprint == fingerprint
     assert client.session['_auth_user_id'] == str(user.pk)
 
 
