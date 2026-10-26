@@ -170,6 +170,13 @@ class Order(models.Model):
     def attach_prescription(self, prescription):
         self.prescription = prescription
 
+    def remove_prescription(self):
+        self.prescription.delete(save=False)
+
+    @property
+    def can_change_prescription(self):
+        return self.fulfillment_status is None
+
     @classmethod
     def create(  # noqa: PLR0913, PLR0917
         cls,

@@ -24,6 +24,7 @@ classDiagram
         note: str
         +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, preparationTag) Order$
         +attach_prescription(file)
+        +remove_prescription()
         +progress() OrderProgress
         +cancel()
         +markAccepted() StatusEvent

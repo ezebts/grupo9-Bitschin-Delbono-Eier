@@ -56,6 +56,22 @@
                                     <span>{% heroicon_solid "arrow-top-right-on-square" size=30 %}</span>
                                 </span>
                             </a>
+                            {% if can_change_prescription %}
+                                <form method="post" action="{% url 'chats:customer_prescription' %}?order_id={{ order_id }}{% if selected %}&conversation_id={{ selected.id }}{% endif %}" onsubmit="return confirm('¿Quitar esta receta?')">
+                                    {% csrf_token %}
+                                    <button type="submit" name="remove" value="1" class="btn btn-ghost h-11 min-h-11 w-full rounded-xl text-sm font-semibold">Quitar receta</button>
+                                </form>
+                            {% endif %}
+                        {% elif can_change_prescription %}
+                            <form method="post" enctype="multipart/form-data" action="{% url 'chats:customer_prescription' %}?order_id={{ order_id }}{% if selected %}&conversation_id={{ selected.id }}{% endif %}">
+                                {% csrf_token %}
+                                <label class="flex h-28 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl bg-[#ECEFED] text-[13px] font-semibold text-[#3F4B47] focus-within:outline-2 focus-within:outline-primary">
+                                    <input class="sr-only" type="file" name="prescription_file" accept=".pdf,.jpg,.jpeg,.png" onchange="this.form.requestSubmit()">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+                                    Sin receta adjunta
+                                    <span class="text-[#0E6B55]">Adjuntar</span>
+                                </label>
+                            </form>
                         {% else %}
                             <div class="flex h-28 flex-col items-center justify-center gap-1.5 rounded-xl bg-[#ECEFED] text-[13px] font-semibold text-[#3F4B47]">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
