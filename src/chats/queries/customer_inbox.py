@@ -72,6 +72,7 @@ class OpenConversation:
     valid_until: date | None
     quoted_at: datetime | None
     quote_card_at_end: bool
+    delivered: bool
     messages: tuple[ChatMessage, ...]
 
 
@@ -286,5 +287,9 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
         valid_until=quote_request.valid_until,
         quoted_at=quote_request.quoted_at,
         quote_card_at_end=quote_card_at_end,
+        delivered=(
+            quote_request.status == QuoteRequestStatus.ACCEPTED
+            and quote_request.order.fulfillment_status == FulfillmentStatus.DELIVERED
+        ),
         messages=tuple(messages),
     )

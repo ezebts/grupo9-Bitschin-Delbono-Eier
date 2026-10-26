@@ -15,3 +15,9 @@ Users, client accounts, pharmacies, and pharmacy accounts.
 Orders, quotes, and conversations.
 
 ![Orders](orders.svg)
+
+## Reviews
+
+Reviews a client leaves after a pharmacy delivers an order, and the average score kept on the pharmacy.
+
+![Reviews](reviews.svg)

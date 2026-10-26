@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'shared',
     'chats',
     'orders',
+    'reviews',
 ]
 
 MIDDLEWARE = [

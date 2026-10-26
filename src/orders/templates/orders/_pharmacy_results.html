@@ -1,33 +1,71 @@
+{% load heroicons stars tz %}
 <section id="pharmacy-results" data-radius-km="{{ options.radius_km|stringformat:'s' }}" aria-labelledby="results-title" class="min-w-0 flex flex-col gap-3">
     {{ markers|json_script:"pharmacy-markers" }}
     <div class="flex flex-wrap justify-between items-center gap-2">
-        <h2 id="results-title" class="font-bold">{{ pharmacies|length }} resultados a menos de {{ options.radius_km }} km en línea recta</h2>
+        <h2 id="results-title" class="font-bold">{{ pharmacies|length }} resultados a menos de {{ options.radius_km }} km</h2>
         <div class="flex gap-1">
             <button type="button" class="btn btn-ghost text-primary" x-on:click="selectAll()">Seleccionar todas</button>
             <button type="button" class="btn btn-ghost" x-on:click="selectNone()">Ninguna</button>
         </div>
     </div>
-    <div class="flex flex-col gap-2.5 max-h-[calc(100dvh-28rem)] min-h-64 overflow-y-auto">
+    <div class="flex flex-col gap-4 max-h-[calc(100dvh-28rem)] min-h-64 overflow-y-auto">
         {% for pharmacy in pharmacies %}
-            <label class="flex gap-3.5 items-start p-4 rounded-2xl cursor-pointer border {% if pharmacy.id in chosen %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border-base-300 bg-base-100{% endif %}">
-                <input class="checkbox checkbox-primary mt-0.5" type="checkbox" name="pharmacy" value="{{ pharmacy.id }}" {% if pharmacy.id in chosen %}checked{% endif %} x-on:change="paint()">
-                <span class="flex-1 min-w-0 flex flex-col gap-1.5">
-                    <span class="flex justify-between gap-3 items-baseline">
-                        <span class="font-bold text-[17px]">{{ pharmacy.name }}</span>
-                        <span class="text-sm font-semibold text-[#3F4B47] whitespace-nowrap">aprox. {{ pharmacy.distance_km|floatformat:1 }} km</span>
+            <div class="flex flex-col gap-1">
+                <label class="flex gap-3.5 items-start p-4 cursor-pointer rounded-2xl border {% if pharmacy.id in chosen %}border-2 border-[#0E6B55] bg-[#F2F8F5]{% else %}border-base-300 bg-base-100{% endif %}">
+                    <input class="checkbox checkbox-primary mt-0.5" type="checkbox" name="pharmacy" value="{{ pharmacy.id }}" {% if pharmacy.id in chosen %}checked{% endif %} x-on:change="paint()">
+                    <span class="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <span class="flex justify-between gap-3 items-baseline">
+                            <span class="font-bold text-[17px]">{{ pharmacy.name }}</span>
+                            <span class="text-sm font-semibold text-[#3F4B47] whitespace-nowrap">aprox. {{ pharmacy.distance_km|floatformat:1 }} km</span>
+                        </span>
+                        {% if pharmacy.score %}
+                            <span class="flex items-center gap-1.5 text-sm font-semibold">
+                                <span>{{ pharmacy.score|floatformat:1 }}</span>
+                                {% stars pharmacy.score %}
+                            </span>
+                        {% else %}
+                            <span class="text-sm text-[#51605A]">Sin reseñas aún</span>
+                        {% endif %}
+                        <span class="flex flex-wrap items-center gap-2 text-sm text-[#51605A]">
+                            <span class="px-2 py-0.5 rounded-md text-xs font-bold {% if pharmacy.is_laboratory %}bg-[#E7EEFD] text-[#1E4FC2]{% else %}bg-[#E2F0EA] text-[#0A5141]{% endif %}">{{ pharmacy.kind_label }}</span>
+                            <span>{{ pharmacy.address }}</span>
+                        </span>
+                        <span class="flex flex-wrap gap-1.5 items-center text-[13px]">
+                            <span class="font-semibold text-[#0A5141]">{{ pharmacy.hours }}</span>
+                            {% for tag in pharmacy.tags %}
+                                <span class="px-2 py-0.5 rounded-full bg-base-200 text-[#3F4B47]">{{ tag }}</span>
+                            {% endfor %}
+                        </span>
                     </span>
-                    <span class="flex flex-wrap items-center gap-2 text-sm text-[#51605A]">
-                        <span class="px-2 py-0.5 rounded-md text-xs font-bold {% if pharmacy.is_laboratory %}bg-[#E7EEFD] text-[#1E4FC2]{% else %}bg-[#E2F0EA] text-[#0A5141]{% endif %}">{{ pharmacy.kind_label }}</span>
-                        <span>{{ pharmacy.address }}</span>
-                    </span>
-                    <span class="flex flex-wrap gap-1.5 items-center text-[13px]">
-                        <span class="font-semibold text-[#0A5141]">{{ pharmacy.hours }}</span>
-                        {% for tag in pharmacy.tags %}
-                            <span class="px-2 py-0.5 rounded-full bg-base-200 text-[#3F4B47]">{{ tag }}</span>
-                        {% endfor %}
-                    </span>
-                </span>
-            </label>
+                </label>
+                {% if pharmacy.reviews %}
+                    <div class="bg-transparent" x-data="reviewCarousel">
+                        <div class="relative">
+                            <div class="flex gap-2 overflow-x-auto px-4 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" x-ref="track" x-on:scroll="edges()" x-on:pointerdown="grab($event)" x-on:pointermove="drag($event)" x-on:pointerup="release($event)" x-on:pointercancel="release($event)" :class="dragging ? 'cursor-grabbing snap-none' : (canPrev || canNext ? 'cursor-grab snap-x snap-mandatory' : '')">
+                                {% for review in pharmacy.reviews %}
+                                    <article class="snap-start shrink-0 w-64 overflow-hidden rounded-xl border border-base-300 bg-base-100 p-3 flex flex-col gap-1.5">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <span aria-hidden="true" class="inline-flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-[#12201B] text-white text-xs font-bold">{{ review.initials }}</span>
+                                            <span class="min-w-0 flex flex-col">
+                                                <span class="font-semibold text-sm truncate">{{ review.name }}</span>
+                                                {% timezone request.user.timezone %}
+                                                    <time class="text-xs text-[#51605A]" datetime="{{ review.created_at|date:'Y-m-d' }}">{{ review.created_at|date:"j b Y" }}</time>
+                                                {% endtimezone %}
+                                            </span>
+                                        </div>
+                                        {% stars review.score %}
+                                        {% if review.comment %}
+                                            <p class="w-full min-w-0 text-sm leading-5 text-[#3F4B47] break-words line-clamp-3" x-data="reviewTip" x-ref="comment" x-on:mouseenter="show()" x-on:mouseleave="hide()">{{ review.comment }}<span class="fixed inset-auto m-0 w-72 max-w-[calc(100vw-1rem)] overflow-visible rounded-2xl border-0 bg-[#E2F0EA] p-3 text-left text-sm font-normal leading-5 text-[#12201B] break-words drop-shadow-md pointer-events-none" popover="manual" x-ref="tip" x-effect="place()">{{ review.comment }}<span class="absolute size-3 rotate-45 bg-[#E2F0EA]" :class="above ? '-bottom-1.5' : '-top-1.5'" :style="{ left: tail + 'px' }"></span></span></p>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-circle btn-sm absolute left-2 top-1/2 z-10 -translate-y-1/2 border border-base-300 bg-base-100 shadow-md" x-show="canPrev" x-cloak x-on:click="move(-1)" aria-label="Reseñas anteriores">{% heroicon_outline "chevron-left" size=18 %}</button>
+                            <button type="button" class="btn btn-circle btn-sm absolute right-2 top-1/2 z-10 -translate-y-1/2 border border-base-300 bg-base-100 shadow-md" x-show="canNext" x-cloak x-on:click="move(1)" aria-label="Reseñas siguientes">{% heroicon_outline "chevron-right" size=18 %}</button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
         {% empty %}
             <p class="text-sm text-[#51605A]">No hay locales visibles dentro de este radio. Ampliá la distancia o cambiá los filtros.</p>
         {% endfor %}

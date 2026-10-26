@@ -226,6 +226,13 @@ class Pharmacy(models.Model):
         db_column='mail_preferences',
     )
 
+    score = models.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        null=True,
+        blank=True,
+    )
+
     objects = PharmacyQuerySet.as_manager()
 
     def __str__(self):

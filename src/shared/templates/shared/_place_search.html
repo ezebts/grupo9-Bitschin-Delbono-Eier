@@ -19,7 +19,7 @@
                        x-ref="text"
                        x-bind:aria-expanded="places.length > 0"
                        x-bind:aria-activedescendant="active >= 0 ? `place-option-${active}` : ''"
-                       x-on:input="clear(); close()"
+                       x-on:input="clear(); close(); queue()"
                        x-on:keydown.down.prevent="move(1)"
                        x-on:keydown.up.prevent="move(-1)"
                        x-on:keydown.enter.prevent="enter()">
