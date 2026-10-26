@@ -14,6 +14,7 @@
         {% block extra_head %}{% endblock %}
         <script defer src="{% static 'shared/js/alpine.min.js' %}"></script>
         <script defer src="{% static 'shared/js/htmx.min.js' %}"></script>
+        <script defer src="{% static 'shared/js/e2ee.js' %}"></script>
         {% django_htmx_script %}
     </head>
     <body class="min-h-dvh bg-base-200" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

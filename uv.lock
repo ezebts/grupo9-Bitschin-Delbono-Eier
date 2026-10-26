@@ -572,6 +572,7 @@ name = "grupo9-bitschin-delbono-eier"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "dacite" },
     { name = "django" },
     { name = "django-allauth", extra = ["socialaccount"] },
@@ -602,6 +603,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.2" },
     { name = "dacite", specifier = ">=1.9.2" },
     { name = "django", specifier = ">=6.1.1" },
     { name = "django-allauth", extras = ["socialaccount"], specifier = ">=65.19.7" },
