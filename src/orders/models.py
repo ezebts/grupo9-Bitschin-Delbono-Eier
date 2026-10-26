@@ -6,6 +6,8 @@ from orders.exceptions import (
     ExpiredQuoteError,
     InvalidEstimatedDateError,
     OrderCannotAdvanceError,
+    PrescriptionAlreadyAttachedError,
+    PrescriptionCannotChangeError,
     QuoteCannotBeAnsweredError,
     QuoteCannotBeEditedError,
     QuoteCannotBeSubmittedError,
@@ -168,9 +170,16 @@ class Order(models.Model):
         super().save(update_fields=['code'])
 
     def attach_prescription(self, prescription):
+        if not self.can_change_prescription:
+            raise PrescriptionCannotChangeError
+        if self.prescription:
+            raise PrescriptionAlreadyAttachedError
+        prescription.seek(0)
         self.prescription = prescription
 
     def remove_prescription(self):
+        if not self.can_change_prescription:
+            raise PrescriptionCannotChangeError
         self.prescription.delete(save=False)
 
     @property

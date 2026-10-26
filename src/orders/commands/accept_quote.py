@@ -3,27 +3,29 @@ from datetime import datetime
 from django.db import transaction
 
 from accounts.models import User
-from orders.models import QuoteRequest, QuoteRequestStatus
+from orders.models import Order, QuoteRequest, QuoteRequestStatus
 
 
 @transaction.atomic
 def accept_quote(user_id, conversation_id):
     """Accepts a quote and lets the other pharmacies of the order know."""
 
+    order_id = QuoteRequest.objects.values_list('order_id', flat=True).get(
+        conversation__pk=conversation_id,
+        order__client_account__user_id=user_id,
+    )
+    order = Order.objects.select_for_update(of=('self',)).get(pk=order_id)
     quote_request = (
         QuoteRequest.objects.select_for_update()
         .select_related('conversation')
-        .get(
-            conversation__pk=conversation_id,
-            order__client_account__user_id=user_id,
-        )
+        .get(conversation__pk=conversation_id, order_id=order.id)
     )
 
     user = User.objects.only('_timezone').get(pk=user_id)
     quote_request.accept_quote(datetime.now(user.timezone).date())
     quote_request.save(update_fields=['status'])
 
-    event = quote_request.order.mark_accepted()
+    event = order.mark_accepted()
     event.save()
 
     conversation = quote_request.conversation
