@@ -97,7 +97,7 @@
                         {% include 'chats/_pharmacy_quote_card.html' %}
                     {% endif %}
                 </div>
-                <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" data-chat-form hx-post="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML">
+                <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" data-chat-form data-recipient-keys-url="{% url 'chats:recipient_keys' selected.id %}" hx-post="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML">
                     {% csrf_token %}
                     {{ recipient_keys|json_script:"recipient-keys" }}
                     <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para {{ selected.customer_name }}</label>

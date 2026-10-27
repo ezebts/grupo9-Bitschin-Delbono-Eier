@@ -424,19 +424,32 @@
         await openPrescriptions(root);
     }
 
+    async function chatRecipientKeys(form) {
+        const keysNode = form.querySelector('#recipient-keys');
+        const embedded = keysNode
+            ? JSON.parse(keysNode.textContent).map((key) => key.public_key)
+            : [];
+        const url = form.dataset.recipientKeysUrl;
+        if (!url) {
+            return embedded;
+        }
+        const response = await fetch(url, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) {
+            return embedded;
+        }
+        return (await response.json()).map((key) => key.public_key);
+    }
+
     async function sealChatForm(form) {
         const field = form.querySelector('textarea');
         const plaintext = field.value;
         if (plaintext.length > 2000 || field.dataset.sealed === '1') {
             return;
         }
-        const keysNode = form.querySelector('#recipient-keys');
-        if (!keysNode) {
-            return;
-        }
-        const recipientKeys = JSON.parse(keysNode.textContent).map(
-            (key) => key.public_key,
-        );
+        const recipientKeys = await chatRecipientKeys(form);
         const account = accountData();
         if (account) {
             const deviceKey = await ensureDeviceKey(account);
@@ -448,9 +461,13 @@
             return;
         }
         const envelope = await encryptEnvelope(plaintext, recipientKeys);
-        field.removeAttribute('maxlength');
-        field.value = JSON.stringify(envelope);
+        const payload = document.createElement('input');
+        payload.type = 'hidden';
+        payload.name = field.name;
+        payload.value = JSON.stringify(envelope);
+        field.removeAttribute('name');
         field.dataset.sealed = '1';
+        form.append(payload);
     }
 
     const prescriptionExtensions = ['pdf', 'jpg', 'jpeg', 'png'];

@@ -33,6 +33,11 @@ urlpatterns = [
         name='customer_review',
     ),
     path(
+        'conversations/<int:conversation_id>/recipient-keys/',
+        views.ConversationRecipientKeysView.as_view(),
+        name='recipient_keys',
+    ),
+    path(
         'conversations/<int:conversation_id>/messages/',
         views.SendMessageView.as_view(),
         name='send_message',

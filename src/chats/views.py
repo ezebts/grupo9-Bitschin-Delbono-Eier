@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView, View
@@ -164,6 +164,21 @@ class PharmacyInboxMixin(RoleRequiredMixin):
 
 class PharmacyInboxView(PharmacyInboxMixin, TemplateView):
     pass
+
+
+class ConversationRecipientKeysView(RoleRequiredMixin, View):
+    def allows(self, user):
+        return user.is_customer or user.is_pharmacy
+
+    def get(self, request, conversation_id):
+        conversations = Conversation.objects.all()
+        if request.user.is_customer:
+            conversations = conversations.for_customer(request.user.id)
+        else:
+            conversations = conversations.for_pharmacy(request.user.id)
+        if not conversations.filter(pk=conversation_id).exists():
+            raise Http404
+        return JsonResponse(recipient_public_keys(conversation_id), safe=False)
 
 
 class SendMessageView(PharmacyInboxMixin, FormView):
