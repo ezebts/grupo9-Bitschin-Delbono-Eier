@@ -226,3 +226,11 @@ __marimo__/
 # Django Tailwind CLI
 .django_tailwind_cli/
 static_tailwind/
+
+# Herramientas locales
+.aider*
+.aiderignore
+.flox
+.pi/
+.software-craft
+openspec/

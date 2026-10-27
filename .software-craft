@@ -1,7 +1,0 @@
-# Harness models to use for each role.
-HARNESS_SOFTWARE_ARCHITECT=anthropic/claude-sonnet-4-6
-HARNESS_SOFTWARE_CODER=deepseek/deepseek-flash
-HARNESS_SOFTWARE_QA=deepseek/deepseek-flash
-
-HARNESS_ENV="$(sc_secret ANTHROPIC_API_KEY) $(sc_secret DEEPSEEK_API_KEY)"
-
