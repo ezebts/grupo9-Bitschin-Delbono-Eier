@@ -7,7 +7,7 @@
             <button type="button" class="btn btn-primary btn-lg" x-on:click="leave()">Abandonar</button>
         </div>
     </dialog>
-    <form method="post" action="{% url 'orders:discard' %}" x-ref="form">
+    <form method="post" action="{% url 'orders:discard' %}" x-ref="form" data-order-discard>
         {% csrf_token %}
         <input type="hidden" name="next" x-bind:value="next">
     </form>

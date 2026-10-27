@@ -3,7 +3,6 @@
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    const iterations = 600000;
     const keySize = 256;
     const nonceSize = 12;
 
@@ -147,117 +146,27 @@
         );
     }
 
-    async function passwordKey(password, salt) {
-        const material = await crypto.subtle.importKey(
-            'raw',
-            encoder.encode(password),
-            'PBKDF2',
-            false,
-            ['deriveKey'],
-        );
-        return crypto.subtle.deriveKey(
-            { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
-            material,
-            { name: 'AES-GCM', length: keySize },
-            false,
-            ['encrypt', 'decrypt'],
-        );
-    }
-
-    async function wrapDataKeyWithPassword(dataKey, password, side) {
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const nonce = crypto.getRandomValues(new Uint8Array(nonceSize));
-        const key = await passwordKey(password, salt);
-        const rawKey = await crypto.subtle.exportKey('raw', dataKey);
-        const ciphertext = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: nonce },
-            key,
-            rawKey,
-        );
-        return {
-            side,
-            ciphertext: encodeBase64(new Uint8Array(ciphertext)),
-            salt: encodeBase64(salt),
-            nonce: encodeBase64(nonce),
-        };
-    }
-
-    async function unwrapDataKeyWithPassword(wrappedKey, password) {
-        const key = await passwordKey(
-            password,
-            decodeBase64(wrappedKey.salt),
-        );
-        const rawKey = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: decodeBase64(wrappedKey.nonce) },
-            key,
-            decodeBase64(wrappedKey.ciphertext),
-        );
-        return crypto.subtle.importKey(
-            'raw',
-            rawKey,
-            { name: 'AES-GCM', length: keySize },
-            true,
-            ['encrypt', 'decrypt'],
-        );
-    }
-
-    async function rewrapDataKeyWithPassword(wrappedKey, password, publicKey) {
-        const dataKey = await unwrapDataKeyWithPassword(wrappedKey, password);
-        return wrapDataKey(dataKey, publicKey);
-    }
-
-    async function rewrapEnvelope(envelope, password, publicKey, side) {
-        const temporaryWrappedKey = envelope.temporary_wrapped_keys.find(
-            (key) => key.side === side,
-        );
-        if (!temporaryWrappedKey) {
-            throw new Error(`No temporary key for the ${side} side.`);
-        }
-
-        const wrappedKey = await rewrapDataKeyWithPassword(
-            temporaryWrappedKey,
-            password,
-            publicKey,
-        );
-        const wrappedKeys = envelope.wrapped_keys.some(
-            (key) => key.fingerprint === wrappedKey.fingerprint,
-        )
-            ? envelope.wrapped_keys
-            : [...envelope.wrapped_keys, wrappedKey];
-
-        return {
-            ...envelope,
-            wrapped_keys: wrappedKeys,
-            temporary_wrapped_keys: envelope.temporary_wrapped_keys.filter(
-                (key) => key.side !== side,
-            ),
-        };
-    }
-
-    async function encryptEnvelope(plaintext, publicKeys, temporaryPasswords = []) {
+    async function encryptShared(parts, publicKeys) {
         const dataKey = await generateDataKey();
-        return encryptEnvelopeWithKey(
-            plaintext,
-            dataKey,
-            publicKeys,
-            temporaryPasswords,
+        const encrypted = {};
+        for (const [name, value] of Object.entries(parts)) {
+            encrypted[name] = await encryptBytes(value, dataKey);
+        }
+        const wrappedKeys = await Promise.all(
+            publicKeys.map((publicKey) => wrapDataKey(dataKey, publicKey)),
         );
+        return { encrypted, wrapped_keys: wrappedKeys };
     }
 
-    async function encryptMessage(
-        plaintext,
-        attachments,
-        publicKeys,
-        temporaryPasswords = [],
-    ) {
+    async function encryptEnvelope(plaintext, publicKeys) {
+        const dataKey = await generateDataKey();
+        return encryptEnvelopeWithKey(plaintext, dataKey, publicKeys);
+    }
+
+    async function encryptMessage(plaintext, attachments, publicKeys) {
         const dataKey = await generateDataKey();
         const [body, encryptedAttachments] = await Promise.all([
-            encryptEnvelopeWithKey(
-                plaintext,
-                dataKey,
-                publicKeys,
-                temporaryPasswords,
-            ),
+            encryptEnvelopeWithKey(plaintext, dataKey, publicKeys),
             Promise.all(
                 attachments.map((file) => encryptAttachment(file, dataKey)),
             ),
@@ -265,53 +174,22 @@
         return { envelope: body, attachments: encryptedAttachments };
     }
 
-    async function encryptEnvelopeWithKey(
-        plaintext,
-        dataKey,
-        publicKeys,
-        temporaryPasswords,
-    ) {
+    async function encryptEnvelopeWithKey(plaintext, dataKey, publicKeys) {
         const encrypted = await encryptBytes(plaintext, dataKey);
         const wrappedKeys = await Promise.all(
             publicKeys.map((publicKey) => wrapDataKey(dataKey, publicKey)),
         );
-        const temporaryWrappedKeys = await Promise.all(
-            temporaryPasswords.map(({ side, password }) =>
-                wrapDataKeyWithPassword(dataKey, password, side),
-            ),
-        );
-        return {
-            ...encrypted,
-            wrapped_keys: wrappedKeys,
-            temporary_wrapped_keys: temporaryWrappedKeys,
-        };
+        return { ...encrypted, wrapped_keys: wrappedKeys };
     }
 
-    async function decryptEnvelope(
-        envelope,
-        { privateKey, fingerprint, temporaryPassword, side },
-    ) {
-        let dataKey;
-        if (temporaryPassword !== undefined) {
-            const wrappedKey = envelope.temporary_wrapped_keys.find(
-                (key) => key.side === side,
-            );
-            if (!wrappedKey) {
-                throw new Error(`No temporary key for the ${side} side.`);
-            }
-            dataKey = await unwrapDataKeyWithPassword(
-                wrappedKey,
-                temporaryPassword,
-            );
-        } else {
-            const wrappedKey = envelope.wrapped_keys.find(
-                (key) => key.fingerprint === fingerprint,
-            );
-            if (!wrappedKey) {
-                throw new Error('This message is unavailable on this device.');
-            }
-            dataKey = await unwrapDataKey(wrappedKey, privateKey);
+    async function decryptEnvelope(envelope, { privateKey, fingerprint }) {
+        const wrappedKey = envelope.wrapped_keys.find(
+            (key) => key.fingerprint === fingerprint,
+        );
+        if (!wrappedKey) {
+            throw new Error('This message is unavailable on this device.');
         }
+        const dataKey = await unwrapDataKey(wrappedKey, privateKey);
         return decoder.decode(
             await decryptBytes(envelope.ciphertext, envelope.nonce, dataKey),
         );
@@ -429,11 +307,260 @@
         return created;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function accountData() {
         const account = document.getElementById('e2ee-account');
-        if (account) {
-            ensureDeviceKey(JSON.parse(account.textContent)).catch(() => {});
+        return account ? JSON.parse(account.textContent) : null;
+    }
+
+    async function openEnvelopes(root) {
+        const account = accountData();
+        if (!account) {
+            return;
         }
+        const deviceKey = await getDeviceKey(account.fingerprints);
+        if (!deviceKey) {
+            return;
+        }
+        const nodes = root.querySelectorAll('[data-e2ee-envelope]');
+        await Promise.all(
+            [...nodes].map(async (node) => {
+                try {
+                    node.textContent = await decryptEnvelope(
+                        JSON.parse(node.dataset.e2eeEnvelope),
+                        deviceKey,
+                    );
+                } catch {
+                    node.textContent = 'Mensaje cifrado';
+                }
+            }),
+        );
+    }
+
+    async function openPrescription(node, deviceKey) {
+        const sealNode = node.querySelector('script[type="application/json"]');
+        if (!sealNode) {
+            return;
+        }
+        const seal = JSON.parse(sealNode.textContent);
+        const dataKey = await unwrapDataKey(
+            seal.wrapped_keys.find(
+                (key) => key.fingerprint === deviceKey.fingerprint,
+            ),
+            deviceKey.privateKey,
+        );
+        const filename = decoder.decode(
+            await decryptBytes(
+                seal.encrypted_filename,
+                seal.filename_nonce,
+                dataKey,
+            ),
+        );
+        node.querySelectorAll('[data-e2ee-filename]').forEach((item) => {
+            item.textContent = filename;
+            item.title = filename;
+        });
+        const response = await fetch(node.dataset.e2eeFile, {
+            credentials: 'same-origin',
+        });
+        const plain = await decryptBytes(
+            encodeBase64(new Uint8Array(await response.arrayBuffer())),
+            seal.nonce,
+            dataKey,
+        );
+        const blob = new Blob([plain], {
+            type: seal.content_type || 'application/octet-stream',
+        });
+        const url = URL.createObjectURL(blob);
+        node.querySelectorAll('[data-e2ee-open], [data-e2ee-download]').forEach(
+            (link) => {
+                if (link === node) {
+                    return;
+                }
+                link.href = url;
+            },
+        );
+        if (node.matches('[data-e2ee-open], [data-e2ee-download]')) {
+            node.href = url;
+        }
+        node.querySelectorAll('[data-e2ee-download]').forEach((link) => {
+            link.download = filename;
+        });
+        const frame = node.querySelector('[data-e2ee-frame]');
+        if (!frame) {
+            return;
+        }
+        if ((seal.content_type || '').startsWith('image/')) {
+            const image = document.createElement('img');
+            image.src = url;
+            image.alt = '';
+            image.className = 'prescription-preview__image';
+            frame.replaceChildren(image);
+            return;
+        }
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.className = 'prescription-preview__iframe';
+        iframe.title = '';
+        frame.replaceChildren(iframe);
+    }
+
+    async function openPrescriptions(root) {
+        const account = accountData();
+        if (!account) {
+            return;
+        }
+        const deviceKey = await getDeviceKey(account.fingerprints);
+        if (!deviceKey) {
+            return;
+        }
+        const nodes = root.querySelectorAll('[data-e2ee-prescription]');
+        await Promise.all(
+            [...nodes].map((node) => openPrescription(node, deviceKey).catch(() => {})),
+        );
+    }
+
+    async function openSealedContent(root) {
+        await openEnvelopes(root);
+        await openPrescriptions(root);
+    }
+
+    async function sealChatForm(form) {
+        const field = form.querySelector('textarea');
+        const plaintext = field.value;
+        if (plaintext.length > 2000 || field.dataset.sealed === '1') {
+            return;
+        }
+        const keysNode = form.querySelector('#recipient-keys');
+        if (!keysNode) {
+            return;
+        }
+        const recipientKeys = JSON.parse(keysNode.textContent).map(
+            (key) => key.public_key,
+        );
+        const account = accountData();
+        if (account) {
+            const deviceKey = await ensureDeviceKey(account);
+            if (!recipientKeys.includes(deviceKey.publicKey)) {
+                recipientKeys.push(deviceKey.publicKey);
+            }
+        }
+        if (!recipientKeys.length) {
+            return;
+        }
+        const envelope = await encryptEnvelope(plaintext, recipientKeys);
+        field.removeAttribute('maxlength');
+        field.value = JSON.stringify(envelope);
+        field.dataset.sealed = '1';
+    }
+
+    const prescriptionExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    const prescriptionMaxBytes = 10 * 1024 * 1024;
+
+    function prescriptionError(file) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!prescriptionExtensions.includes(extension)) {
+            return 'La receta tiene que ser un PDF, JPG o PNG.';
+        }
+        if (file.size > prescriptionMaxBytes) {
+            return 'La receta puede pesar hasta 10 MB.';
+        }
+        return '';
+    }
+
+    async function recipientKeysFrom(node) {
+        const keysNode = node.querySelector('#order-recipient-keys, #recipient-keys');
+        const keys = keysNode
+            ? JSON.parse(keysNode.textContent).map((key) => key.public_key)
+            : [];
+        const account = accountData();
+        if (!account) {
+            return keys;
+        }
+        const deviceKey = await ensureDeviceKey(account);
+        if (!keys.includes(deviceKey.publicKey)) {
+            keys.push(deviceKey.publicKey);
+        }
+        return keys;
+    }
+
+    async function sealPrescriptionForm(form) {
+        const input = form.querySelector('input[type=file]');
+        const file = input.files[0];
+        const error = prescriptionError(file);
+        if (error) {
+            input.setCustomValidity(error);
+            input.reportValidity();
+            return;
+        }
+        input.setCustomValidity('');
+        const sealed = await encryptShared(
+            {
+                filename: file.name,
+                file: await file.arrayBuffer(),
+            },
+            await recipientKeysFrom(form),
+        );
+        const bytes = decodeBase64(sealed.encrypted.file.ciphertext);
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([bytes], 'prescription.bin'));
+        input.files = transfer.files;
+        const seal = document.createElement('input');
+        seal.type = 'hidden';
+        seal.name = 'prescription_seal';
+        seal.value = JSON.stringify({
+            encrypted_filename: sealed.encrypted.filename.ciphertext,
+            filename_nonce: sealed.encrypted.filename.nonce,
+            nonce: sealed.encrypted.file.nonce,
+            content_type: file.type || 'application/octet-stream',
+            wrapped_keys: sealed.wrapped_keys,
+        });
+        form.append(seal);
+        form.dataset.sealed = '1';
+        form.requestSubmit();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const account = accountData();
+        if (account) {
+            getDeviceKey(account.fingerprints)
+                .then((existing) => {
+                    if (existing) {
+                        return openSealedContent(document);
+                    }
+                    return ensureDeviceKey(account).then(() => {
+                        location.reload();
+                    });
+                })
+                .catch(() => {});
+        }
+        document.body.addEventListener('htmx:afterSwap', (event) => {
+            openSealedContent(event.target).catch(() => {});
+        });
+        document.addEventListener('submit', (event) => {
+            const form = event.target;
+            if (!form.matches || !form.matches('[data-seal-prescription]')) {
+                return;
+            }
+            if (form.dataset.sealed === '1' || form.querySelector('[name=remove]')) {
+                return;
+            }
+            event.preventDefault();
+            sealPrescriptionForm(form).catch(() => {});
+        });
+        document.body.addEventListener('htmx:confirm', (event) => {
+            const form = event.detail.elt;
+            if (!form.matches || !form.matches('[data-chat-form]')) {
+                return;
+            }
+            const field = form.querySelector('textarea');
+            if (!field || field.dataset.sealed === '1') {
+                return;
+            }
+            event.preventDefault();
+            sealChatForm(form)
+                .then(() => event.detail.issueRequest(true))
+                .catch(() => {});
+        });
     });
 
     window.E2EE = Object.freeze({
@@ -447,15 +574,13 @@
             ensureDeviceKey,
         }),
         messages: Object.freeze({
+            decodeBase64,
             generateDataKey,
             encryptBytes,
             decryptBytes,
             wrapDataKey,
             unwrapDataKey,
-            wrapDataKeyWithPassword,
-            unwrapDataKeyWithPassword,
-            rewrapDataKeyWithPassword,
-            rewrapEnvelope,
+            encryptShared,
             encryptEnvelope,
             encryptMessage,
             decryptEnvelope,

@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SECRET_KEY: ci-insecure-secret-key
+      SECURED_CONVERSATIONS_SECRET_KEY: AbbgPPmrErv-6P-XQoUp8B2NwvZ2z0M1A-cXD7_RcW8=
       HOSTNAME: localhost
       ALLOWED_HOSTS: localhost,testserver
     steps:

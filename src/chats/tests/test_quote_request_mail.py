@@ -48,10 +48,10 @@ def test_new_quote_request_emails_the_pharmacy(django_capture_on_commit_callback
     assert message.subject == 'Nueva solicitud de presupuesto'
     assert 'Farmacia Galénica Palermo' in message.body
     assert 'Sofía Martínez' in message.body
-    assert 'Hidroquinona 4%' in message.body
+    assert 'Hidroquinona 4%' not in message.body
     assert long_formula not in message.body
-    assert '...' in message.body
-    assert 'Crema 30 g' in message.body
+    assert 'cuánto cuesta una receta' in message.body
+    assert 'Crema 30 g' not in message.body
     assert 'Esta semana' in message.body
     assert 'Retiro en farmacia' in message.body
     assert message.content_subtype == 'html'

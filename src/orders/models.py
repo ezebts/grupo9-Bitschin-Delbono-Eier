@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.db import models
 from django.db.models import Case, CharField, Count, Exists, OuterRef, Q, Value, When
 from django.utils import timezone
@@ -21,8 +23,8 @@ def _zero_delivery_cost():
     return asdict(Money.ARS(0))
 
 
-def prescriptions_path(instance, filename):
-    return f'orders/prescriptions/{instance.pk}/{filename}'
+def prescriptions_path(instance, filename):  # noqa: ARG001
+    return f'orders/prescriptions/{instance.pk}/{uuid4().hex}'
 
 
 class Urgency(models.TextChoices):
@@ -133,9 +135,9 @@ class Order(models.Model):
 
     preparation_tag = models.CharField(max_length=32)
 
-    formula = models.CharField(max_length=2000)
+    formula = models.TextField()
 
-    presentation = models.CharField(max_length=60)
+    presentation = models.TextField()
 
     urgency = models.CharField(max_length=32, choices=Urgency.choices)
 
@@ -144,13 +146,15 @@ class Order(models.Model):
         db_column='delivery_preferences',
     )
 
-    note = models.CharField(max_length=1000, blank=True)
+    note = models.TextField(blank=True)
 
     prescription = models.FileField(
         upload_to=prescriptions_path,
         blank=True,
         max_length=255,
     )
+
+    prescription_seal = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -181,6 +185,7 @@ class Order(models.Model):
         if not self.can_change_prescription:
             raise PrescriptionCannotChangeError
         self.prescription.delete(save=False)
+        self.prescription_seal = None
 
     @property
     def can_change_prescription(self):

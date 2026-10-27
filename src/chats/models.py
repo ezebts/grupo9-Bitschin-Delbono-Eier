@@ -40,8 +40,6 @@ class ConversationQuerySet(models.QuerySet):
             Q(**{f'{customer}__first_name__icontains': term})
             | Q(**{f'{customer}__last_name__icontains': term})
             | Q(**{f'{customer}__email__icontains': term})
-            | Q(title__icontains=term)
-            | Q(messages__body__icontains=term),
         ).distinct()
 
 
@@ -53,6 +51,12 @@ class Conversation(models.Model):
     )
 
     title = models.CharField(max_length=200, blank=True)
+
+    server_public_key = models.TextField(blank=True)
+
+    server_key_fingerprint = models.CharField(max_length=64, blank=True)
+
+    server_private_key = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -105,7 +109,7 @@ class Message(models.Model):
         related_name='messages',
     )
 
-    body = models.TextField(max_length=2000)
+    body = models.TextField()
 
     sender = models.CharField(max_length=8, choices=Sender.choices)
 

@@ -1,7 +1,5 @@
-from pathlib import Path
-
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -12,17 +10,20 @@ from accounts.forms.search_radius import SearchRadiusInput
 from accounts.models import PreparationTag, SearchRadius
 from accounts.queries.client_profile import get_account_client_profile
 from accounts.queries.find_nearby_pharmacies import find_nearby_pharmacies
+from chats.queries.recipient_keys import order_recipient_public_keys
 from orders.commands.create_order import CreateOrderParams, create_order
 from orders.commands.request_quote import request_quote
-from orders.commands.temp_prescriptions import (
-    delete_temp_prescription,
-    open_temp_prescription,
-    save_temp_prescription,
+from orders.commands.seal_order import (
+    SealOrderParams,
+    prescription_seal_from_json,
+    seal_order,
 )
+from orders.commands.temp_prescriptions import delete_temp_prescription
 from orders.forms import NewOrderForm
-from orders.models import OrderProgress
+from orders.models import Order, OrderProgress
 from orders.queries.client_orders import list_client_orders
 from reviews.models import MAX_SCORE, MIN_SCORE
+from shared.encryption import InvalidEncryptedDataError
 from shared.values import Coordinates
 from shared.views import RoleRequiredMixin
 
@@ -48,8 +49,6 @@ class NewOrderView(RoleRequiredMixin, FormView):
 
         fields = (
             'preparation_tag',
-            'presentation',
-            'formula',
             'urgency',
             'delivery_preferences',
             'search_area',
@@ -58,7 +57,6 @@ class NewOrderView(RoleRequiredMixin, FormView):
             'address',
             'locality',
             'postal_code',
-            'note',
         )
 
         initial.update({field: saved[field] for field in fields if field in saved})
@@ -66,28 +64,18 @@ class NewOrderView(RoleRequiredMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        saved = self.request.session.get(self.order_session_key) or {}
-        context['saved_prescription'] = Path(saved.get('prescription_path') or '').name
+        context['restore_draft'] = 'volver' in self.request.GET
         return context
 
     def form_valid(self, form):
         data = form.cleaned_data
         params = form.cleaned_params
         previous = self.request.session.get(self.order_session_key) or {}
-        prescription_path = previous.get('prescription_path')
-        clear_prescription = bool(self.request.POST.get('clear_prescription'))
-
-        if params.prescription_file is not None:
-            delete_temp_prescription(prescription_path)
-            prescription_path = save_temp_prescription(params.prescription_file)
-
-        if clear_prescription or not prescription_path:
-            delete_temp_prescription(prescription_path)
+        if self.request.POST.get('clear_prescription'):
+            delete_temp_prescription(previous.get('prescription_path'))
 
         self.request.session[self.order_session_key] = {
             'preparation_tag': params.preparation_tag.value,
-            'presentation': params.presentation,
-            'formula': params.formula,
             'urgency': params.urgency,
             'delivery_preferences': list(params.delivery_preferences),
             'search_area': params.search_area,
@@ -96,9 +84,7 @@ class NewOrderView(RoleRequiredMixin, FormView):
             'address': data.get('address') or '',
             'locality': data.get('locality') or '',
             'postal_code': data.get('postal_code') or '',
-            'note': params.note,
-            'prescription_path': prescription_path,
-            'has_prescription': bool(prescription_path),
+            'has_prescription': bool(self.request.POST.get('has_prescription')),
         }
 
         return redirect('orders:choose')
@@ -113,6 +99,13 @@ class DiscardOrderView(RoleRequiredMixin, View):
     def post(self, request):
         order = request.session.get(NewOrderView.order_session_key) or {}
         delete_temp_prescription(order.get('prescription_path'))
+        pending_id = request.session.pop('pending_order_id', None)
+        if pending_id:
+            Order.objects.filter(
+                pk=pending_id,
+                client_account__user_id=request.user.id,
+                formula='',
+            ).delete()
         request.session.pop(NewOrderView.order_session_key, None)
         request.session.pop(ChoosePharmaciesView.selected_pharmacies_session_key, None)
         next_url = request.POST.get('next', '')
@@ -162,40 +155,36 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
             messages.error(request, 'Elegí al menos una farmacia.')
             return self.render_to_response(self.get_context_data())
 
+        if request.headers.get('X-Order-Prepare') != '1':
+            messages.error(request, 'No pudimos cifrar la solicitud.')
+            return self.render_to_response(self.get_context_data())
+
         request.session[self.selected_pharmacies_session_key] = selected_pharmacies_ids
-
-        prescription = open_temp_prescription(saved.get('prescription_path'))
-
-        try:
+        order = _pending_order(request, selected_pharmacies_ids)
+        if order is None:
             order = create_order(
                 request.user.id,
                 CreateOrderParams(
                     preparation_tag=saved['preparation_tag'],
-                    presentation=saved['presentation'],
-                    formula=saved['formula'],
+                    presentation='',
+                    formula='',
                     urgency=saved['urgency'],
                     delivery_preferences=tuple(saved['delivery_preferences']),
-                    note=saved['note'],
-                    prescription=prescription,
+                    note='',
                 ),
             )
-        finally:
-            if prescription is not None:
-                prescription.close()
+            for pharmacy_id in selected_pharmacies_ids:
+                request_quote(order.id, pharmacy_id)
+            request.session['pending_order_id'] = order.id
 
-        for pharmacy_id in selected_pharmacies_ids:
-            request_quote(order.id, pharmacy_id)
-
-        delete_temp_prescription(saved.get('prescription_path'))
-        request.session.pop(NewOrderView.order_session_key, None)
-        request.session.pop(self.selected_pharmacies_session_key, None)
-
-        messages.success(
-            request,
-            'Creamos tu pedido y una solicitud para cada farmacia.',
+        return JsonResponse(
+            {
+                'order_id': order.id,
+                'seal_url': reverse('orders:seal', args=[order.id]),
+                'next_url': reverse('orders:list'),
+                'public_keys': order_recipient_public_keys(order.id),
+            }
         )
-
-        return redirect('orders:list')
 
     def get_search_params(self, query):
         kinds = query.getlist('kinds')
@@ -281,6 +270,62 @@ class ChoosePharmaciesView(RoleRequiredMixin, TemplateView):
         )
 
         return context
+
+
+def _pending_order(request, pharmacy_ids):
+    pending_id = request.session.get('pending_order_id')
+    if not pending_id:
+        return None
+    order = Order.objects.filter(
+        pk=pending_id,
+        client_account__user_id=request.user.id,
+        formula='',
+    ).first()
+    if order is None:
+        return None
+    existing = set(order.quote_requests.values_list('pharmacy_id', flat=True))
+    if existing != set(pharmacy_ids):
+        order.delete()
+        return None
+    return order
+
+
+class SealOrderView(RoleRequiredMixin, View):
+    http_method_names = ('post',)
+
+    def allows(self, user):
+        return user.is_customer
+
+    def post(self, request, order_id):
+        raw_seal = request.POST.get('prescription_seal', '')
+        upload = request.FILES.get('prescription_file')
+        try:
+            seal = prescription_seal_from_json(raw_seal) if raw_seal else None
+            prescription = upload.read() if upload is not None else None
+            seal_order(
+                request.user.id,
+                order_id,
+                SealOrderParams(
+                    formula=request.POST.get('formula', ''),
+                    presentation=request.POST.get('presentation', ''),
+                    note=request.POST.get('note', ''),
+                    prescription=prescription,
+                    seal=seal,
+                ),
+            )
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'No encontramos el pedido.'}, status=404)
+        except InvalidEncryptedDataError as error:
+            return JsonResponse({'error': str(error.message)}, status=400)
+
+        request.session.pop(NewOrderView.order_session_key, None)
+        request.session.pop(ChoosePharmaciesView.selected_pharmacies_session_key, None)
+        request.session.pop('pending_order_id', None)
+        messages.success(
+            request,
+            'Creamos tu pedido y una solicitud para cada farmacia.',
+        )
+        return JsonResponse({'next_url': reverse('orders:list')})
 
 
 class MyOrdersView(RoleRequiredMixin, TemplateView):

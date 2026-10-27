@@ -19,7 +19,7 @@ PREPARATION_TIME_CHOICES = (
 
 class CustomerMessageForm(forms.Form):
     message = forms.CharField(
-        max_length=2000,
+        max_length=100000,
         strip=True,
         widget=forms.Textarea(
             attrs={
@@ -33,7 +33,7 @@ class CustomerMessageForm(forms.Form):
 
 class MessageForm(forms.Form):
     message = forms.CharField(
-        max_length=2000,
+        max_length=100000,
         strip=True,
         widget=forms.Textarea(
             attrs={

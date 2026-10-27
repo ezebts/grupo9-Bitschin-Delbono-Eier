@@ -4,6 +4,8 @@ DEBUG = True
 
 SECRET_KEY = 'test-insecure-secret-key'
 
+SECURED_CONVERSATIONS_SECRET_KEY = 'AbbgPPmrErv-6P-XQoUp8B2NwvZ2z0M1A-cXD7_RcW8='
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

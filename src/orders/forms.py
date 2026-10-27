@@ -6,7 +6,9 @@ from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import FileExtensionValidator
 
 from accounts.models import PreparationTag
+from orders.commands.seal_order import prescription_seal_from_json
 from orders.models import DeliveryPreference, Urgency
+from shared.encryption import AES_GCM_TAG_SIZE, InvalidEncryptedDataError
 from shared.forms import TypedForm
 from shared.values import (
     Coordinates,
@@ -35,22 +37,41 @@ class NewOrderParams:
 class OrderPrescriptionForm(forms.Form):
     prescription_file = forms.FileField(
         label='Receta médica',
-        validators=[
-            FileExtensionValidator(
-                PRESCRIPTION_EXTENSIONS,
-                message='La receta tiene que ser un PDF, JPG o PNG.',
-            ),
-        ],
         error_messages={'required': 'Elegí un archivo de receta.'},
         widget=forms.FileInput(attrs={'accept': '.pdf,.jpg,.jpeg,.png'}),
     )
 
-    def clean_prescription_file(self):
-        file = self.cleaned_data['prescription_file']
-        if file and file.size > PRESCRIPTION_MAX_SIZE:
-            message = 'La receta puede pesar hasta 10 MB.'
-            raise ValidationError(message, code='too_large')
-        return file
+    prescription_seal = forms.CharField(required=False)
+
+    def clean(self):
+        cleaned = super().clean()
+        upload = cleaned.get('prescription_file')
+        if upload is None:
+            return cleaned
+        raw_seal = (cleaned.get('prescription_seal') or '').strip()
+        limit = PRESCRIPTION_MAX_SIZE + (AES_GCM_TAG_SIZE if raw_seal else 0)
+        if upload.size > limit:
+            self.add_error(
+                'prescription_file',
+                ValidationError(
+                    'La receta puede pesar hasta 10 MB.',
+                    code='too_large',
+                ),
+            )
+        if raw_seal:
+            try:
+                cleaned['prescription_seal'] = prescription_seal_from_json(raw_seal)
+            except InvalidEncryptedDataError as error:
+                self.add_error('prescription_seal', error.message)
+            return cleaned
+        extension = upload.name.rsplit('.', 1)[-1].lower()
+        if extension not in PRESCRIPTION_EXTENSIONS:
+            self.add_error(
+                'prescription_file',
+                'La receta tiene que ser un PDF, JPG o PNG.',
+            )
+        cleaned['prescription_seal'] = None
+        return cleaned
 
 
 class NewOrderForm(TypedForm[NewOrderParams]):
@@ -62,13 +83,17 @@ class NewOrderForm(TypedForm[NewOrderParams]):
     presentation = forms.CharField(
         label='Cantidad o presentación',
         max_length=60,
-        widget=forms.TextInput(attrs={'placeholder': 'Por ejemplo: 60 ml'}),
+        required=False,
+        widget=forms.TextInput(
+            attrs={'placeholder': 'Por ejemplo: 60 ml', 'required': True},
+        ),
     )
 
     formula = forms.CharField(
         label='¿Qué preparación necesitás?',
         max_length=2000,
-        widget=forms.Textarea(attrs={'rows': 4}),
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 4, 'required': True}),
         help_text=(
             'Escribila como figura en la receta. Si tenés dudas, adjuntá la receta: '
             'la farmacia la interpreta.'

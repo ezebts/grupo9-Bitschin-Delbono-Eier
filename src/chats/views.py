@@ -17,6 +17,10 @@ from chats.queries.customer_inbox import (
     get_customer_inbox,
 )
 from chats.queries.pharmacy_inbox import get_conversation, get_pharmacy_inbox
+from chats.queries.recipient_keys import (
+    order_recipient_public_keys,
+    recipient_public_keys,
+)
 from orders.commands.accept_quote import accept_quote
 from orders.commands.advance_order import advance_order
 from orders.commands.change_prescription import (
@@ -137,6 +141,7 @@ class PharmacyInboxMixin(RoleRequiredMixin):
             quoted_count=inbox.quoted_count,
             accepted_count=inbox.accepted_count,
             review=get_conversation_review(selected.id) if selected else None,
+            recipient_keys=(recipient_public_keys(selected.id) if selected else []),
         )
         return context
 
@@ -328,7 +333,9 @@ class CustomerInboxMixin(RoleRequiredMixin):
             sent_at=inbox.created_at,
             prescription_name=inbox.prescription_name,
             prescription_url=inbox.prescription_url,
+            prescription_seal=inbox.prescription_seal,
             can_change_prescription=inbox.can_change_prescription,
+            order_recipient_keys=order_recipient_public_keys(order_id),
             order_id=order_id,
             form=context.get('form', CustomerMessageForm()),
             review=(
@@ -337,6 +344,7 @@ class CustomerInboxMixin(RoleRequiredMixin):
                 else None
             ),
             review_form=review_form or ReviewForm(),
+            recipient_keys=(recipient_public_keys(selected.id) if selected else []),
         )
         return context
 
@@ -366,9 +374,10 @@ class CustomerPrescriptionView(RoleRequiredMixin, View):
                         request.user.id,
                         int(order_id),
                         form.cleaned_data['prescription_file'],
+                        form.cleaned_data['prescription_seal'],
                     )
                 else:
-                    messages.error(request, form.errors['prescription_file'][0])
+                    messages.error(request, next(iter(form.errors.values()))[0])
         except Order.DoesNotExist:
             raise Http404 from None
         except Error as error:

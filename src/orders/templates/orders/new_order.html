@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load heroicons widget_tweaks %}
+{% load heroicons static widget_tweaks %}
 
 {% block head_title %}Nueva solicitud{% endblock head_title %}
 
@@ -29,7 +29,7 @@
             </div>
             {% include "shared/_messages.html" %}
             <div class="flex flex-wrap gap-6 items-start">
-                <form method="post" enctype="multipart/form-data" novalidate aria-label="Datos de la preparación" class="flex-[2_1_35rem] bg-base-100 border border-base-300 rounded-3xl p-8 space-y-6">
+                <form method="post" enctype="multipart/form-data" novalidate aria-label="Datos de la preparación" class="flex-[2_1_35rem] bg-base-100 border border-base-300 rounded-3xl p-8 space-y-6" data-order-form {% if restore_draft %}data-restore-draft{% endif %}>
                     {% csrf_token %}
                     {% for error in form.non_field_errors %}
                         <p class="text-error text-sm">{{ error }}</p>
@@ -52,7 +52,8 @@
                             <p class="text-error text-sm">{{ error }}</p>
                         {% endfor %}
                     </fieldset>
-                    <fieldset class="fieldset gap-2.5" x-data="prescriptionFile('{{ saved_prescription|escapejs }}')">
+                    <fieldset class="fieldset gap-2.5" x-data="prescriptionFile('')">
+                        <input type="hidden" name="has_prescription" value="">
                         <input type="hidden" name="clear_prescription" x-bind:value="cleared ? '1' : ''">
                         <legend class="fieldset-legend">
                             {{ form.prescription_file.label }}
@@ -149,6 +150,7 @@
 {% endblock content %}
 
 {% block extra_body %}
+    <script defer src="{% static 'orders/order_draft.js' %}"></script>
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('prescriptionFile', (savedName) => ({

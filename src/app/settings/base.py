@@ -16,6 +16,8 @@ from decouple import Csv, config
 
 SECRET_KEY = config('SECRET_KEY')
 
+SECURED_CONVERSATIONS_SECRET_KEY = config('SECURED_CONVERSATIONS_SECRET_KEY')
+
 HOST = config('HOSTNAME')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
