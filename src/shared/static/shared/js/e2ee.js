@@ -422,31 +422,12 @@
             return deviceKey;
         }
         const created = await createDeviceKey();
-        await htmx.ajax('POST', account.register_url, {
+        await htmx.ajax('POST', account.register_device_url, {
             values: { public_key: created.publicKey },
             swap: 'none',
         });
         return created;
     }
-
-    document.addEventListener('submit', (event) => {
-        const form = event.target;
-        const field = form.querySelector('[data-e2ee-public-key]');
-        if (!field || field.value || form.dataset.e2eeReady) {
-            return;
-        }
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        createDeviceKey()
-            .then((deviceKey) => {
-                field.value = deviceKey.publicKey;
-            })
-            .catch(() => {})
-            .finally(() => {
-                form.dataset.e2eeReady = 'true';
-                setTimeout(() => form.requestSubmit());
-            });
-    }, true);
 
     document.addEventListener('DOMContentLoaded', () => {
         const account = document.getElementById('e2ee-account');

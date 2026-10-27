@@ -1,11 +1,10 @@
 from django import forms
 
 from accounts.commands.signup import signup
-from accounts.forms.encryption_keys import EncryptionKeysForm
 from accounts.models import User
 
 
-class SignupForm(EncryptionKeysForm):
+class SignupForm(forms.Form):
     role = forms.ChoiceField(
         label='¿Cómo vas a usar la app?',
         choices=User.Role.choices,
@@ -17,4 +16,4 @@ class SignupForm(EncryptionKeysForm):
     last_name = forms.CharField(label='Apellido', max_length=150)
 
     def signup(self, _request, user):
-        signup(user, self.cleaned_data['role'], self.cleaned_params.public_key)
+        signup(user, self.cleaned_data['role'])

@@ -24,7 +24,6 @@
         {% include "shared/_field.html" with field=form.email %}
         {% include "shared/_field.html" with field=form.password1 %}
         {% include "shared/_field.html" with field=form.password2 %}
-        {% include "accounts/_encryption_setup.html" %}
         {{ redirect_field }}
         <button type="submit" class="btn btn-primary btn-lg w-full">Crear cuenta</button>
     </form>

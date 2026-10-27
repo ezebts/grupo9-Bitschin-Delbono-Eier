@@ -10,7 +10,7 @@ from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
-from accounts.commands.register_device_key import register_device_key
+from accounts.commands.register_device import register_device
 from accounts.commands.set_pharmacy_visibility import set_pharmacy_visibility
 from accounts.commands.signup import signup_with_invitation
 from accounts.commands.update_client_profile import update_client_profile
@@ -21,7 +21,7 @@ from accounts.exceptions import (
     PharmacyCantClearSearchData,
 )
 from accounts.forms.client_profile import ClientProfileForm
-from accounts.forms.encryption_keys import DeviceKeyForm, EncryptionKeysForm
+from accounts.forms.encryption_keys import DeviceKeyForm
 from accounts.forms.pharmacy_profile import PharmacyProfileForm
 from accounts.forms.set_password import SetPasswordForm
 from accounts.models import InvitationLink, User
@@ -63,7 +63,7 @@ class InvitationSignupView(View):
 
     def get(self, request):
         if self.user is None:
-            return self._render_confirm(request, EncryptionKeysForm())
+            return render(request, self.confirm_template_name, self._context())
 
         if not self._account_is_complete(self.user):
             return self._render_complete_account(SetPasswordForm(self.user))
@@ -91,23 +91,9 @@ class InvitationSignupView(View):
     def _context(self):
         return {'invitation': self.invitation}
 
-    def _render_confirm(self, request, form):
-        return render(
-            request,
-            self.confirm_template_name,
-            {**self._context(), 'form': form},
-        )
-
     def _create_account(self):
-        form = EncryptionKeysForm(self.request.POST)
-        if not form.is_valid():
-            return self._render_confirm(self.request, form)
-
         try:
-            user = signup_with_invitation(
-                self.invitation,
-                form.cleaned_params.public_key,
-            )
+            user = signup_with_invitation(self.invitation)
         except InvalidInvitationLinkError as error:
             messages.error(self.request, error.message)
             return redirect('account_signup')
@@ -158,7 +144,7 @@ class DeviceKeyView(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         try:
-            register_device_key(self.request.user.id, form.cleaned_params)
+            register_device(self.request.user.id, form.cleaned_params)
         except Error as error:
             form.add_error('public_key', error)
             return self.form_invalid(form)

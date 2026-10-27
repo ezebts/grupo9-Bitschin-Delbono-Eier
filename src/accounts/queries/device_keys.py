@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from accounts.models import DeviceKey
-from shared.encryption import fingerprint_public_key
 
 
 @dataclass(frozen=True)
@@ -33,9 +32,3 @@ def get_pharmacy_device_keys(pharmacy_id):
             user__pharmacy_account__pharmacy_id=pharmacy_id,
         )
     )
-
-
-def is_device_key_registered(public_key):
-    return DeviceKey.objects.filter(
-        fingerprint=fingerprint_public_key(public_key),
-    ).exists()

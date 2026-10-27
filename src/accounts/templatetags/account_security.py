@@ -6,11 +6,11 @@ from accounts.queries.device_keys import get_user_device_keys
 register = template.Library()
 
 
-@register.inclusion_tag('accounts/_encryption_account.html')
-def encryption_account(user):
+@register.inclusion_tag('accounts/_account_security.html')
+def account_security(user):
     return {
-        'encryption_account': {
-            'register_url': reverse('device_keys'),
+        'account_security': {
+            'register_device_url': reverse('register_device'),
             'fingerprints': [
                 device_key.fingerprint for device_key in get_user_device_keys(user.id)
             ],
