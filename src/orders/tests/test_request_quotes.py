@@ -115,6 +115,6 @@ def test_order_keeps_the_prescription():
     assert order.prescription.name.startswith(
         f'orders/prescriptions/{order.pk}/',
     )
-    assert 'receta' in order.prescription.name
+    assert 'receta' not in order.prescription.name
     assert order.prescription.read() == b'receta'
     order.prescription.close()

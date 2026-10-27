@@ -19,7 +19,7 @@
                 {% endif %}
                 <span class="text-[13px] text-[#51605A]">
                     <time>{{ conversation.updated_at|date:"d/m H:i" }}</time>
-                    {% if conversation.last_message %}· «{{ conversation.last_message.body|truncatechars:60 }}»{% endif %}
+                    {% if conversation.last_message %}· «<span {% if conversation.last_message.body|slice:":1" == "{" %}data-e2ee-envelope="{{ conversation.last_message.body }}"{% endif %}>{{ conversation.last_message.body|truncatechars:60 }}</span>»{% endif %}
                 </span>
             </a>
         {% empty %}
@@ -46,7 +46,7 @@
                     {% else %}
                         <div class="flex flex-col gap-1 {% if message.is_customer %}items-end{% else %}items-start{% endif %}">
                             <span class="text-xs text-[#51605A]">{% if message.is_customer %}Vos{% else %}{{ selected.pharmacy_name }}{% endif %} · <time>{{ message.created_at|date:"d/m H:i" }}</time></span>
-                            <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_customer %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}">{{ message.body|linebreaksbr }}</p>
+                            <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_customer %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}" {% if message.body|slice:":1" == "{" %}data-e2ee-envelope="{{ message.body }}"{% endif %}>{% if message.body|slice:":1" == "{" %}Mensaje cifrado{% else %}{{ message.body|linebreaksbr }}{% endif %}</p>
                         </div>
                     {% endif %}
                     {% if message.follow_with_quote_card %}
@@ -63,6 +63,7 @@
             </div>
             <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:customer_reply' selected.id %}?order_id={{ order_id }}" data-chat-form hx-post="{% url 'chats:customer_reply' selected.id %}?order_id={{ order_id }}" hx-target="#customer-chat" hx-swap="outerHTML">
                 {% csrf_token %}
+                {{ recipient_keys|json_script:"recipient-keys" }}
                 <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para {{ selected.pharmacy_name }}</label>
                 <div class="flex gap-2 items-end">
                     {% render_field form.message class="textarea w-full min-w-0 flex-1 min-h-12 max-h-24 resize-none overflow-y-auto text-[15px] leading-normal" %}

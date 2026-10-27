@@ -1,0 +1,1 @@
+{% if value|slice:":1" == "{" %}<span data-e2ee-envelope="{{ value }}">Contenido cifrado</span>{% else %}{{ value }}{% endif %}

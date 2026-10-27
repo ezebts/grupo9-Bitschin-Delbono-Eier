@@ -22,6 +22,7 @@ classDiagram
         formula: str
         presentation: str
         note: str
+        prescriptionSeal: json
         +create(clientAccountId, formula, presentation, urgency, deliveryPreference, note, preparationTag) Order$
         +attach_prescription(file)
         +remove_prescription()
@@ -57,6 +58,8 @@ classDiagram
     }
     class Conversation {
         title: str
+        serverPublicKey: str
+        serverKeyFingerprint: str
         clientNotifiedAt: datetime
         pharmacyNotifiedAt: datetime
         +create(quoteRequestId, author, text, files) Conversation$

@@ -92,6 +92,7 @@ class CustomerInbox:
     prescription_name: str
     prescription_url: str
     can_change_prescription: bool
+    prescription_seal: dict | None = None
 
 
 def get_customer_inbox(user_id, order_id) -> CustomerInbox:
@@ -142,7 +143,7 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
         listed.append(
             ListedConversation(
                 id=conversation.pk,
-                title=conversation.title,
+                title=order.formula,
                 pharmacy_name=conversation.pharmacy_name,
                 waiting_for_pharmacy=(last is None or last.is_customer),
                 quote_status=conversation.quote_request.status,
@@ -188,6 +189,7 @@ def get_customer_inbox(user_id, order_id) -> CustomerInbox:
         ),
         prescription_url=order.prescription.url if order.prescription else '',
         can_change_prescription=order.can_change_prescription,
+        prescription_seal=order.prescription_seal,
     )
 
 
@@ -267,7 +269,7 @@ def get_customer_conversation(user_id, order_id, conversation_id) -> OpenConvers
 
     return OpenConversation(
         id=conversation.pk,
-        title=conversation.title,
+        title=quote_request.order.formula,
         pharmacy_name=pharmacy.trade_name,
         address=address,
         hours=hours,

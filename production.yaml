@@ -17,6 +17,8 @@ services:
         value: app.settings.production
       - key: SECRET_KEY
         generateValue: true
+      - key: SECURED_CONVERSATIONS_SECRET_KEY
+        sync: false
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: HOSTNAME

@@ -17,7 +17,7 @@
                     {% endif %}
                 </nav>
                 <div class="flex flex-col gap-1">
-                    <h1 class="text-3xl font-bold tracking-tight leading-tight">{% if formula %}{{ formula }}{% else %}Chat con farmacias{% endif %}</h1>
+                    <h1 class="text-3xl font-bold tracking-tight leading-tight">{% if formula %}{% include 'chats/_sealed_text.html' with value=formula %}{% else %}Chat con farmacias{% endif %}</h1>
                     <p class="text-sm text-[#51605A]">
                         {% if quotes_total %}
                             {{ quotes_received }} de {{ quotes_total }} presupuestos recibidos
@@ -41,7 +41,7 @@
                         <h2 id="det-titulo" class="text-[15px] font-bold">Tu solicitud</h2>
                         <dl class="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-2 text-sm">
                             <dt class="text-[#51605A]">Tipo</dt><dd class="font-semibold">{{ preparation_label }}</dd>
-                            <dt class="text-[#51605A]">Cantidad</dt><dd class="font-semibold">{{ presentation }}</dd>
+                            <dt class="text-[#51605A]">Cantidad</dt><dd class="font-semibold">{% include 'chats/_sealed_text.html' with value=presentation %}</dd>
                             <dt class="text-[#51605A]">Para</dt><dd class="font-semibold">{{ urgency_label }}</dd>
                             <dt class="text-[#51605A]">Entrega</dt><dd class="font-semibold">{{ delivery_label }}</dd>
                             <dt class="text-[#51605A]">Enviada</dt>
@@ -50,8 +50,13 @@
                             </dd>
                         </dl>
                         {% if prescription_url %}
-                            <a href="{{ prescription_url }}" target="_blank" rel="noopener noreferrer" class="prescription-preview" aria-label="Abrir documento">
-                                {% include 'chats/_prescription_thumbnail.html' with prescription_url=prescription_url prescription_name=prescription_name only %}
+                            <a href="{{ prescription_url }}" target="_blank" rel="noopener noreferrer" class="prescription-preview" aria-label="Abrir documento" {% if prescription_seal %}data-e2ee-prescription data-e2ee-file="{{ prescription_url }}" data-e2ee-open{% endif %}>
+                                {% if prescription_seal %}
+                                    {{ prescription_seal|json_script:"prescription-seal" }}
+                                    <div data-e2ee-frame class="prescription-preview__embed" aria-hidden="true"></div>
+                                {% else %}
+                                    {% include 'chats/_prescription_thumbnail.html' with prescription_url=prescription_url prescription_name=prescription_name only %}
+                                {% endif %}
                                 <span class="prescription-preview__overlay">
                                     <span>{% heroicon_solid "arrow-top-right-on-square" size=30 %}</span>
                                 </span>
@@ -63,8 +68,9 @@
                                 </form>
                             {% endif %}
                         {% elif can_change_prescription %}
-                            <form method="post" enctype="multipart/form-data" action="{% url 'chats:customer_prescription' %}?order_id={{ order_id }}{% if selected %}&conversation_id={{ selected.id }}{% endif %}">
+                            <form method="post" enctype="multipart/form-data" action="{% url 'chats:customer_prescription' %}?order_id={{ order_id }}{% if selected %}&conversation_id={{ selected.id }}{% endif %}" data-seal-prescription>
                                 {% csrf_token %}
+                                {{ order_recipient_keys|json_script:"order-recipient-keys" }}
                                 <label class="flex h-28 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl bg-[#ECEFED] text-[13px] font-semibold text-[#3F4B47] focus-within:outline-2 focus-within:outline-primary">
                                     <input class="sr-only" type="file" name="prescription_file" accept=".pdf,.jpg,.jpeg,.png" onchange="this.form.requestSubmit()">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>

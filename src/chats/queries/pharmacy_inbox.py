@@ -94,6 +94,7 @@ class OpenConversation:
     fulfillment_steps: tuple[FulfillmentStep, ...]
     next_fulfillment_label: str
     asks_estimated_date: bool
+    prescription_seal: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,7 @@ def get_pharmacy_inbox(
         listed.append(
             ListedConversation(
                 id=conversation.pk,
-                title=conversation.title,
+                title=order.formula,
                 customer_name=customer_name,
                 quote_status=conversation.quote_request.status,
                 fulfillment_label=(
@@ -316,7 +317,7 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
 
     return OpenConversation(
         id=conversation.pk,
-        title=conversation.title,
+        title=order.formula,
         customer_name=customer_name,
         waiting_for_pharmacy=latest_conversation_sender
         in {None, Message.Sender.CUSTOMER},
@@ -370,6 +371,7 @@ def get_conversation(user_id, conversation_id) -> OpenConversation:
             order.fulfillment_label(next_status) if accepted and next_status else ''
         ),
         asks_estimated_date=next_status == FulfillmentStatus.IN_PREPARATION,
+        prescription_seal=order.prescription_seal,
     )
 
 

@@ -4,7 +4,7 @@
     <div class="w-full rounded-2xl rounded-bl-sm border border-[#DCE2DE] bg-base-100 p-4 flex flex-col gap-3.5">
         <span class="text-xs font-bold uppercase tracking-[0.06em] text-[#8A4B00]">Solicitud de presupuesto</span>
         <p class="text-base font-semibold leading-normal text-base-content">
-            {{ selected.title }}{% if selected.presentation %}, {{ selected.presentation }}{% endif %}
+            {% include 'chats/_sealed_text.html' with value=selected.title %}{% if selected.presentation %}, {% include 'chats/_sealed_text.html' with value=selected.presentation %}{% endif %}
         </p>
         <dl class="quote-request-meta">
             <div>
@@ -25,28 +25,35 @@
             </div>
         </dl>
         {% if selected.order_note %}
-            <p class="m-0 rounded-[10px] bg-[#F3F5F2] px-3 py-2.5 text-sm leading-normal text-base-content"><strong>Nota:</strong> {{ selected.order_note }}</p>
+            <p class="m-0 rounded-[10px] bg-[#F3F5F2] px-3 py-2.5 text-sm leading-normal text-base-content"><strong>Nota:</strong> {% include 'chats/_sealed_text.html' with value=selected.order_note %}</p>
         {% endif %}
         {% if selected.prescription_url %}
-            <div class="quote-request-attachment">
-                <div class="prescription-preview prescription-preview--compact">
-                    {% include 'chats/_prescription_thumbnail.html' with prescription_url=selected.prescription_url prescription_name=selected.prescription_name only %}
-                </div>
+            <div class="quote-request-attachment" {% if selected.prescription_seal %}data-e2ee-prescription data-e2ee-file="{{ selected.prescription_url }}"{% endif %}>
+                {% if selected.prescription_seal %}
+                    {{ selected.prescription_seal|json_script:"prescription-seal" }}
+                    <div class="prescription-preview prescription-preview--compact">
+                        <div data-e2ee-frame class="prescription-preview__embed" aria-hidden="true"></div>
+                    </div>
+                {% else %}
+                    <div class="prescription-preview prescription-preview--compact">
+                        {% include 'chats/_prescription_thumbnail.html' with prescription_url=selected.prescription_url prescription_name=selected.prescription_name only %}
+                    </div>
+                {% endif %}
                 <span class="flex min-w-0 flex-1 basis-[140px] flex-col gap-0.5 overflow-hidden">
-                    <span class="block max-w-full truncate text-sm font-semibold text-base-content" title="{{ selected.prescription_name }}">{{ selected.prescription_name }}</span>
+                    <span class="block max-w-full truncate text-sm font-semibold text-base-content" {% if selected.prescription_seal %}data-e2ee-filename{% endif %} title="{{ selected.prescription_name }}">{% if selected.prescription_seal %}Receta cifrada{% else %}{{ selected.prescription_name }}{% endif %}</span>
                     <span class="text-[13px] text-[#51605A]">Receta médica{% if selected.prescription_size_label %} · {{ selected.prescription_size_label }}{% endif %}</span>
                 </span>
-                <a href="{{ selected.prescription_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[#C9D2CD] px-3.5 text-sm font-semibold no-underline text-[#12201B]">Ver</a>
-                <a href="{{ selected.prescription_url }}" download class="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[#C9D2CD] px-3.5 text-sm font-semibold no-underline text-[#12201B]">Descargar</a>
+                <a href="{{ selected.prescription_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[#C9D2CD] px-3.5 text-sm font-semibold no-underline text-[#12201B]" {% if selected.prescription_seal %}data-e2ee-open{% endif %}>Ver</a>
+                <a href="{{ selected.prescription_url }}" download class="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[#C9D2CD] px-3.5 text-sm font-semibold no-underline text-[#12201B]" {% if selected.prescription_seal %}data-e2ee-download{% endif %}>Descargar</a>
             </div>
         {% endif %}
     </div>
     {% else %}
     <div class="w-full max-w-[80%] rounded-2xl rounded-bl-sm border border-[#DCE2DE] bg-base-100 px-4 py-3 flex flex-col gap-2">
         <span class="text-xs font-bold uppercase tracking-wide text-[#51605A]">Solicitud de presupuesto</span>
-        <p class="text-[15px] leading-normal">{{ selected.title }}. {{ selected.urgency_label|lower }}, {{ selected.delivery_label|lower }}.</p>
+        <p class="text-[15px] leading-normal">{% include 'chats/_sealed_text.html' with value=selected.title %}. {{ selected.urgency_label|lower }}, {{ selected.delivery_label|lower }}.</p>
         {% if selected.prescription_url %}
-            <a href="{{ selected.prescription_url }}" target="_blank" rel="noopener noreferrer" class="self-start text-sm font-semibold no-underline text-[#0E6B55]">{{ selected.prescription_name }}</a>
+            <a href="{{ selected.prescription_url }}" target="_blank" rel="noopener noreferrer" class="self-start text-sm font-semibold no-underline text-[#0E6B55]" {% if selected.prescription_seal %}data-e2ee-prescription data-e2ee-file="{{ selected.prescription_url }}" data-e2ee-open data-e2ee-filename{% endif %}>{% if selected.prescription_seal %}{{ selected.prescription_seal|json_script:"prescription-seal" }}Receta cifrada{% else %}{{ selected.prescription_name }}{% endif %}</a>
         {% endif %}
     </div>
     {% endif %}

@@ -73,7 +73,7 @@
                 </fieldset>
             </form>
 
-            <form method="post" action="{{ request.get_full_path }}" class="space-y-6" x-data="pharmacyPicker">
+            <form method="post" action="{{ request.get_full_path }}" class="space-y-6" x-data="pharmacyPicker" data-order-confirm>
                 {% csrf_token %}
                 <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-5 items-stretch">
                     {% include "orders/_pharmacy_results.html" %}
@@ -84,7 +84,7 @@
                 <div class="sticky bottom-0 z-10 -mx-6 px-6 py-4 bg-base-200 border-t border-base-300 flex flex-wrap gap-3 items-center justify-between">
                     <div class="min-w-0">
                         <p class="font-bold text-[17px]"><span x-text="selected">{{ chosen|length }}</span> seleccionadas</p>
-                        <p class="text-sm text-[#51605A]">{{ order.formula }} · {{ order.presentation }}{% if order.has_prescription %} · receta adjunta{% endif %}</p>
+                        <p class="text-sm text-[#51605A]" data-order-draft-summary></p>
                     </div>
                     <div class="flex flex-wrap gap-3 items-center">
                         <span class="text-sm text-[#3F4B47]">Cada farmacia elegida recibe un mail</span>
@@ -101,6 +101,7 @@
 {% endblock content %}
 
 {% block extra_body %}
+    <script defer src="{% static 'orders/order_draft.js' %}"></script>
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('reviewCarousel', () => ({

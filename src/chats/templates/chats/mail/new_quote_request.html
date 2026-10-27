@@ -16,17 +16,9 @@
                 <p style="font-size:16px;line-height:1.55;color:#3F4B47;">
                     {% if pharmacy_name %}Hola, equipo de {{ pharmacy_name }}.{% else %}Hola.{% endif %}
                     <strong style="color:#12201B;">{{ customer_name }}</strong>
-                    te eligió en el mapa y quiere saber cuánto cuesta esta receta.
+                    te eligió en el mapa y quiere saber cuánto cuesta una receta.
                 </p>
                 <table style="width:100%;border-collapse:collapse;background:#F3F5F2;border-radius:12px;">
-                    <tr>
-                        <td style="padding:10px 16px;color:#51605A;width:130px;">Preparación</td>
-                        <td style="padding:10px 16px;font-weight:700;">{{ preparation }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:10px 16px;color:#51605A;">Presentación</td>
-                        <td style="padding:10px 16px;font-weight:600;">{{ presentation }}</td>
-                    </tr>
                     <tr>
                         <td style="padding:10px 16px;color:#51605A;">Para cuándo</td>
                         <td style="padding:10px 16px;font-weight:600;">{{ urgency }}</td>

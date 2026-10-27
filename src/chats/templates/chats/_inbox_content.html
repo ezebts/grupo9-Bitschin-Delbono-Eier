@@ -39,8 +39,8 @@
                         <span class="font-bold text-[15px]">{{ conversation.customer_name }}</span>
                         <time class="text-[13px] text-[#51605A]">{{ conversation.updated_at|date:"d/m H:i" }}</time>
                     </span>
-                    <span class="text-sm text-[#3F4B47]">{{ conversation.title }}</span>
-                    <span class="text-sm text-[#51605A]">{% if conversation.last_message %}«{{ conversation.last_message.body|truncatechars:60 }}»{% else %}Sin mensajes{% endif %}</span>
+                    <span class="text-sm text-[#3F4B47]">{% include 'chats/_sealed_text.html' with value=conversation.title %}</span>
+                    <span class="text-sm text-[#51605A]">{% if conversation.last_message %}«<span {% if conversation.last_message.body|slice:":1" == "{" %}data-e2ee-envelope="{{ conversation.last_message.body }}"{% endif %}>{{ conversation.last_message.body|truncatechars:60 }}</span>»{% else %}Sin mensajes{% endif %}</span>
                     {% if conversation.waiting_for_pharmacy %}
                         <span class="self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#FCEFD9] text-[#8A4B00]">Nuevo mensaje</span>
                     {% elif conversation.quote_status == 'waiting' %}
@@ -61,7 +61,7 @@
                     <span class="flex flex-col gap-1">
                         <span class="text-sm text-[#51605A]">#{{ selected.order_code }} · recibida {{ selected.order_created_at|date:"j b, H:i" }}</span>
                         <span class="font-bold text-base">{{ selected.customer_name }}</span>
-                        <span class="text-[13px] text-[#51605A]">{{ selected.title }}</span>
+                        <span class="text-[13px] text-[#51605A]">{% include 'chats/_sealed_text.html' with value=selected.title %}</span>
                     </span>
                     <span class="flex flex-wrap items-center gap-2">
                         {% if selected.quote_status == 'waiting' %}
@@ -84,7 +84,7 @@
                         {% else %}
                             <div class="flex flex-col gap-1 {% if message.is_pharmacy %}items-end{% else %}items-start{% endif %}">
                                 <span class="text-xs text-[#51605A]">{% if message.is_pharmacy %}Vos{% else %}{{ selected.customer_name }}{% endif %} · <time>{{ message.created_at|date:"d/m H:i" }}</time></span>
-                                <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_pharmacy %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}">{{ message.body|linebreaksbr }}</p>
+                                <p class="max-w-[78%] px-4 py-3 text-[15px] leading-normal {% if message.is_pharmacy %}rounded-2xl rounded-br-sm bg-[#E2F0EA]{% else %}rounded-2xl rounded-bl-sm bg-base-100 border border-base-300{% endif %}" {% if message.body|slice:":1" == "{" %}data-e2ee-envelope="{{ message.body }}"{% endif %}>{% if message.body|slice:":1" == "{" %}Mensaje cifrado{% else %}{{ message.body|linebreaksbr }}{% endif %}</p>
                             </div>
                         {% endif %}
                         {% if message.follow_with_quote_card %}
@@ -99,6 +99,7 @@
                 </div>
                 <form class="shrink-0 border-t border-base-300 px-4 py-3.5 flex flex-col gap-2" method="post" action="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" data-chat-form hx-post="{% url 'chats:send_message' selected.id %}?filter={{ filter }}{% if search %}&amp;search={{ search|urlencode }}{% endif %}" hx-target="#inbox-content" hx-swap="outerHTML">
                     {% csrf_token %}
+                    {{ recipient_keys|json_script:"recipient-keys" }}
                     <label class="sr-only" for="{{ form.message.id_for_label }}">Mensaje para {{ selected.customer_name }}</label>
                     <div class="flex gap-2 items-end">
                         {% render_field form.message class="textarea w-full min-w-0 flex-1 min-h-12 max-h-24 resize-none overflow-y-auto text-[15px] leading-normal" %}

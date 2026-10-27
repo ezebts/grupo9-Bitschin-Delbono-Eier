@@ -7,7 +7,6 @@ from shared.encryption import (
     EncryptedEnvelope,
     InvalidEncryptedDataError,
     InvalidPublicKeyError,
-    TemporaryWrappedKey,
     WrappedKey,
     fingerprint_public_key,
 )
@@ -30,24 +29,6 @@ def test_encrypted_envelope_accepts_a_device_wrapped_key(device_public_key):
     )
 
     assert envelope.wrapped_keys == (wrapped_key,)
-
-
-def test_encrypted_envelope_accepts_a_temporary_wrapped_key():
-    wrapped_key = TemporaryWrappedKey(
-        side='customer',
-        ciphertext='A' * 64,
-        salt='A' * 22,
-        nonce='A' * 16,
-    )
-
-    envelope = EncryptedEnvelope(
-        ciphertext='A' * 22,
-        nonce='MDEyMzQ1Njc4OWFi',
-        wrapped_keys=(),
-        temporary_wrapped_keys=(wrapped_key,),
-    )
-
-    assert envelope.temporary_wrapped_keys == (wrapped_key,)
 
 
 @pytest.mark.django_db
@@ -113,20 +94,10 @@ def test_wrapped_key_rejects_an_invalid_size(device_public_key):
         WrappedKey(fingerprint, 'A' * 510)
 
 
-@pytest.mark.parametrize(
-    ('ciphertext', 'salt', 'nonce'),
-    [
-        ('AA', 'A' * 22, 'A' * 16),
-        ('A' * 64, 'AA', 'A' * 16),
-        ('A' * 64, 'A' * 22, 'AA'),
-        ('not*base64', 'A' * 22, 'A' * 16),
-    ],
-)
-def test_temporary_wrapped_key_rejects_invalid_values(ciphertext, salt, nonce):
+def test_envelope_requires_a_wrapped_key():
     with pytest.raises(InvalidEncryptedDataError):
-        TemporaryWrappedKey(
-            side='customer',
-            ciphertext=ciphertext,
-            salt=salt,
-            nonce=nonce,
+        EncryptedEnvelope(
+            ciphertext='A' * 22,
+            nonce='MDEyMzQ1Njc4OWFi',
+            wrapped_keys=(),
         )

@@ -13,11 +13,8 @@ from shared.exceptions import Error
 
 RSA_KEY_SIZE = 3072
 RSA_CIPHERTEXT_SIZE = RSA_KEY_SIZE // 8
-AES_KEY_SIZE = 32
 AES_NONCE_SIZE = 12
 AES_GCM_TAG_SIZE = 16
-TEMPORARY_SALT_SIZE = 16
-ENCRYPTION_SIDES = frozenset({'customer', 'pharmacy'})
 
 
 @dataclass(frozen=True)
@@ -47,54 +44,24 @@ class WrappedKey:
 
 
 @dataclass(frozen=True)
-class TemporaryWrappedKey:
-    side: str
-    ciphertext: str
-    salt: str
-    nonce: str
-
-    def __post_init__(self):
-        if not isinstance(self.side, str) or self.side not in ENCRYPTION_SIDES:
-            raise InvalidEncryptedDataError
-        if len(_decode_base64(self.ciphertext)) != AES_KEY_SIZE + 16:
-            raise InvalidEncryptedDataError
-        if len(_decode_base64(self.salt)) != TEMPORARY_SALT_SIZE:
-            raise InvalidEncryptedDataError
-        if len(_decode_base64(self.nonce)) != AES_NONCE_SIZE:
-            raise InvalidEncryptedDataError
-
-
-@dataclass(frozen=True)
 class EncryptedEnvelope:
     ciphertext: str
     nonce: str
     wrapped_keys: tuple[WrappedKey, ...]
-    temporary_wrapped_keys: tuple[TemporaryWrappedKey, ...] = ()
 
     def __post_init__(self):
-        if not isinstance(self.wrapped_keys, tuple) or not isinstance(
-            self.temporary_wrapped_keys,
-            tuple,
-        ):
+        if not isinstance(self.wrapped_keys, tuple):
             raise InvalidEncryptedDataError
         if len(_decode_base64(self.ciphertext)) < AES_GCM_TAG_SIZE:
             raise InvalidEncryptedDataError
         if len(_decode_base64(self.nonce)) != AES_NONCE_SIZE:
             raise InvalidEncryptedDataError
-        if not all(isinstance(wrapped, WrappedKey) for wrapped in self.wrapped_keys):
-            raise InvalidEncryptedDataError
-        if not all(
-            isinstance(wrapped, TemporaryWrappedKey)
-            for wrapped in self.temporary_wrapped_keys
+        if not self.wrapped_keys or not all(
+            isinstance(wrapped, WrappedKey) for wrapped in self.wrapped_keys
         ):
-            raise InvalidEncryptedDataError
-        if not self.wrapped_keys and not self.temporary_wrapped_keys:
             raise InvalidEncryptedDataError
         fingerprints = [wrapped.fingerprint.lower() for wrapped in self.wrapped_keys]
         if len(fingerprints) != len(set(fingerprints)):
-            raise InvalidEncryptedDataError
-        sides = [wrapped.side for wrapped in self.temporary_wrapped_keys]
-        if len(sides) != len(set(sides)):
             raise InvalidEncryptedDataError
 
 

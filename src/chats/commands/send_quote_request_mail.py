@@ -8,8 +8,6 @@ from chats.models import Conversation
 from orders.models import DeliveryPreference, QuoteRequest, Urgency
 from shared.urls import absolute_url
 
-PREPARATION_PREVIEW_LENGTH = 80
-
 
 def send_quote_request_mail(quote_request_id):
     """Emails the pharmacy that a client asked them for a quote."""
@@ -47,8 +45,6 @@ def send_quote_request_mail(quote_request_id):
         'pharmacy_name': pharmacy.trade_name,
         'order_code': order.code,
         'customer_name': _customer_name(order.client_account.user),
-        'preparation': _preparation(order.formula),
-        'presentation': order.presentation,
         'urgency': Urgency(order.urgency).label,
         'delivery': _delivery_label(order),
         'action_url': action_url,
@@ -68,13 +64,6 @@ def send_quote_request_mail(quote_request_id):
 def _customer_name(user):
     full_name = f'{user.first_name} {user.last_name}'.strip()
     return full_name or user.email
-
-
-def _preparation(formula):
-    compact = ' '.join(formula.split())
-    if len(compact) <= PREPARATION_PREVIEW_LENGTH:
-        return compact
-    return f'{compact[: PREPARATION_PREVIEW_LENGTH - 3]}...'
 
 
 def _delivery_label(order):
