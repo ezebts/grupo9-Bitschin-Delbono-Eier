@@ -10,4 +10,5 @@ urlpatterns = [
         views.PharmacyVisibilityView.as_view(),
         name='pharmacy_visibility',
     ),
+    path('register-device/', views.DeviceKeyView.as_view(), name='register_device'),
 ]

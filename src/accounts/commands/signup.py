@@ -34,7 +34,9 @@ def signup(user: User, role: str):
 
 
 @transaction.atomic
-def signup_with_invitation(invitation_link: InvitationLink) -> User:
+def signup_with_invitation(
+    invitation_link: InvitationLink,
+) -> User:
     """Open the invited account, or attach a free pharmacy to an existing user."""
 
     user = User.objects.filter(email__iexact=invitation_link.email).first()

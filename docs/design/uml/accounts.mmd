@@ -1,6 +1,7 @@
 classDiagram
     User "1" --> "0..1" ClientAccount
     User "1" --> "0..1" PharmacyAccount
+    User "1" --> "0..*" DeviceKey
     PharmacyAccount "0..*" --> "1" Pharmacy
     User *-- Role
     ClientAccount *-- PhoneNumber
@@ -53,6 +54,11 @@ classDiagram
         technicalDirector: str
         license: str
         +updateLegalInfo(legalName, cuit, technicalDirector, license)
+    }
+    class DeviceKey {
+        publicKey: str
+        fingerprint: str
+        createdAt: datetime
     }
     class Role {
         <<enum>>
@@ -164,6 +170,7 @@ classDiagram
     class ClientAccount:::model
     class Pharmacy:::model
     class PharmacyAccount:::model
+    class DeviceKey:::model
     class Role:::model
     class SearchRadius:::model
     class PhoneNumber:::model

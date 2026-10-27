@@ -11,6 +11,11 @@ class InvalidInvitationLinkError(Error):
 
 
 @dataclass(frozen=True)
+class DeviceKeyBelongsToAnotherUserError(Error):
+    message = _('Esta clave de dispositivo ya está registrada en otra cuenta.')
+
+
+@dataclass(frozen=True)
 class InvalidCuitError(Error):
     message = _('El CUIT no es válido.')
 

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-{% load i18n django_htmx static tailwind_cli %}
+{% load i18n django_htmx static tailwind_cli account_security %}
 
 {% get_current_language as LANGUAGE_CODE %}
 
@@ -25,5 +25,8 @@
             {% block content %}{% endblock content %}
         {% endblock body %}
         {% block extra_body %}{% endblock extra_body %}
+        {% if user.is_authenticated %}
+            {% account_security user %}
+        {% endif %}
     </body>
 </html>
